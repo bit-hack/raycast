@@ -21,13 +21,13 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#define _SDL_main_h
+#include <SDL/SDL.h>
+
 #include <cmath>
 #include <string>
 #include <vector>
 #include <iostream>
-
-#include "quickcg.h"
-using namespace QuickCG;
 
 /*
 g++ *.cpp -lSDL -O3 -W -Wall -ansi -pedantic
@@ -67,7 +67,20 @@ int worldMap[mapWidth][mapHeight]=
   {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 };
 
-int main(int /*argc*/, char */*argv*/[])
+SDL_Surface *surf;
+
+//draw the pixels of the stripe as a vertical line
+void verLine(int x, int drawStart, int drawEnd, uint32_t color) {
+  uint32_t *p = (uint32_t*)surf->pixels;
+  p += x;
+  p += drawStart * surf->w;
+  for (int y = drawStart; y < drawEnd; ++y) {
+    *p = color;
+    p += surf->w;
+  }
+}
+
+int main(int argc, char *args[])
 {
   double posX = 22, posY = 12;  //x and y start position
   double dirX = -1, dirY = 0; //initial direction vector
@@ -76,9 +89,24 @@ int main(int /*argc*/, char */*argv*/[])
   double time = 0; //time of current frame
   double oldTime = 0; //time of previous frame
 
-  screen(512, 384, 0, "Raycaster");
-  while(!done())
+  const int w = 512;
+  const int h = 384;
+
+  SDL_Init(SDL_INIT_VIDEO);
+  surf = SDL_SetVideoMode(512, 384, 32, 0);
+
+  bool done = false;
+
+  while(!done)
   {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+      if (event.type == SDL_QUIT) {
+        done = true;
+        break;
+      }
+    }
+
     for(int x = 0; x < w; x++)
     {
       //calculate ray position and direction
@@ -94,8 +122,8 @@ int main(int /*argc*/, char */*argv*/[])
       double sideDistY;
 
        //length of ray from one x or y-side to next x or y-side
-      double deltaDistX = std::abs(1 / rayDirX);
-      double deltaDistY = std::abs(1 / rayDirY);
+      double deltaDistX = std::abs(1.f / rayDirX);
+      double deltaDistY = std::abs(1.f / rayDirY);
       double perpWallDist;
 
       //what direction to step in x or y-direction (either +1 or -1)
@@ -158,14 +186,14 @@ int main(int /*argc*/, char */*argv*/[])
       if(drawEnd >= h)drawEnd = h - 1;
 
       //choose wall color
-      ColorRGB color;
+      int color;
       switch(worldMap[mapX][mapY])
       {
-        case 1:  color = RGB_Red;  break; //red
-        case 2:  color = RGB_Green;  break; //green
-        case 3:  color = RGB_Blue;   break; //blue
-        case 4:  color = RGB_White;  break; //white
-        default: color = RGB_Yellow; break; //yellow
+        case 1:  color = 0xff0000; break; //red
+        case 2:  color = 0x00ff00; break; //green
+        case 3:  color = 0x0000ff; break; //blue
+        case 4:  color = 0xffffff; break; //white
+        default: color = 0x00ffff; break; //yellow
       }
 
       //give x and y sides different brightness
@@ -174,32 +202,35 @@ int main(int /*argc*/, char */*argv*/[])
       //draw the pixels of the stripe as a vertical line
       verLine(x, drawStart, drawEnd, color);
     }
+
     //timing for input and FPS counter
     oldTime = time;
-    time = getTicks();
+    time = SDL_GetTicks();
     double frameTime = (time - oldTime) / 1000.0; //frameTime is the time this frame has taken, in seconds
-    print(1.0 / frameTime); //FPS counter
-    redraw();
-    cls();
+
+    SDL_Flip(surf);
+    SDL_FillRect(surf, nullptr, 0x101010);
 
     //speed modifiers
     double moveSpeed = frameTime * 5.0; //the constant value is in squares/second
     double rotSpeed = frameTime * 3.0; //the constant value is in radians/second
-    readKeys();
+
+    const uint8_t *keys = SDL_GetKeyState(nullptr);
+
     //move forward if no wall in front of you
-    if (keyDown(SDLK_UP))
+    if (keys[SDLK_UP])
     {
       if(worldMap[int(posX + dirX * moveSpeed)][int(posY)] == false) posX += dirX * moveSpeed;
       if(worldMap[int(posX)][int(posY + dirY * moveSpeed)] == false) posY += dirY * moveSpeed;
     }
     //move backwards if no wall behind you
-    if (keyDown(SDLK_DOWN))
+    if (keys[SDLK_DOWN])
     {
       if(worldMap[int(posX - dirX * moveSpeed)][int(posY)] == false) posX -= dirX * moveSpeed;
       if(worldMap[int(posX)][int(posY - dirY * moveSpeed)] == false) posY -= dirY * moveSpeed;
     }
     //rotate to the right
-    if (keyDown(SDLK_RIGHT))
+    if (keys[SDLK_RIGHT])
     {
       //both camera direction and camera plane must be rotated
       double oldDirX = dirX;
@@ -210,7 +241,7 @@ int main(int /*argc*/, char */*argv*/[])
       planeY = oldPlaneX * sin(-rotSpeed) + planeY * cos(-rotSpeed);
     }
     //rotate to the left
-    if (keyDown(SDLK_LEFT))
+    if (keys[SDLK_LEFT])
     {
       //both camera direction and camera plane must be rotated
       double oldDirX = dirX;
