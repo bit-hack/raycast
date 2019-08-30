@@ -5,6 +5,21 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <array>
+
+template <typename type_t>
+struct vec2_t {
+  type_t x, y;
+
+  vec2_t operator + (const vec2_t &a) const {
+    return vec2_t{a.x + x, a.y + y};
+  }
+};
+
+using vec2f_t = vec2_t<float>;
+using vec2i_t = vec2_t<int32_t>;
+
+enum axis_t { axis_x, axis_y };
 
 #define mapWidth  24
 #define mapHeight 24
@@ -36,8 +51,10 @@ uint8_t worldMap[mapWidth][mapHeight] = {
   {9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9}
 };
 
-const int w = 320;
-const int h = 240;
+enum {
+  w = 320,
+  h = 240,
+};
 
 float playerX = 22.f;
 float playerY = 12.f;
@@ -49,18 +66,7 @@ float eyeLevel = 3.f;
 float nearPlaneDist = .66f;
 
 SDL_Surface *surf;
-
-static void verLine(int x, int drawStart, int drawEnd, uint32_t color) {
-  drawStart = SDL_max(drawStart, 0);
-  drawEnd = SDL_min(drawEnd, h - 1);
-  uint32_t *p = (uint32_t*)surf->pixels;
-  p += x;
-  p += drawStart * surf->w;
-  for (int y = drawStart; y < drawEnd; ++y) {
-    *p = color;
-    p += surf->w;
-  }
-}
+std::array<uint32_t, w*h> screen;
 
 static float fpart(float x) {
   return x - float(int32_t(x));
@@ -79,8 +85,57 @@ static float project(float y, float dist) {
   }
 }
 
-static void draw_vert(int32_t x, float y1, float y2, uint32_t rgb) {
-  verLine(x, int32_t(y1), int32_t(y2), rgb);
+static void draw_floor(int32_t x, float miny, float y1, float y2, const vec2f_t &p0, const vec2f_t &p1) {
+  const int32_t drawStart = SDL_max(int32_t(SDL_min(miny, y1)), 0);
+  const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y2)), h - 1);
+  if (drawStart >= drawEnd) {
+    return;
+  }
+
+  const float dy = y2 - y1;
+  const vec2f_t step{(p0.x - p1.x) / dy, (p0.y - p1.y) / dy};
+
+  vec2f_t f = p1;
+
+  uint32_t *p = screen.data();
+  p += x;
+  p += drawStart * w;
+  for (int32_t y = drawStart; y < drawEnd; ++y) {
+
+    const uint32_t cx = uint32_t(f.x * 256) & 0xff;
+    const uint32_t cy = uint32_t(f.y * 256) & 0xff;
+
+    *p = cx | (cy << 8);
+
+    p += w;
+
+    f = f + step;
+  }
+}
+
+static void draw_wall(int32_t x, float miny, float y1, float y2, int32_t height,
+                      int32_t oldheight, axis_t axis, const vec2f_t &isect,
+                      uint32_t rgb) {
+
+  const int32_t drawStart = SDL_max(int32_t(SDL_min(miny, y1)), 0);
+  const int32_t drawEnd = SDL_min(int32_t(SDL_min(miny, y2)), h - 1);
+
+  const float dy = 256.f * float(height - oldheight) / (y1 - y2);
+
+  const uint32_t fr = uint32_t(((axis == axis_x) ? isect.y : isect.x) * 256.f);
+  rgb = (fr & 0xff) << 8;
+
+  float v = 0.f;
+
+  uint32_t *p = screen.data();
+  p += x;
+  p += drawStart * w;
+  for (int32_t y = drawStart; y < drawEnd; ++y) {
+
+    *p = rgb | (uint32_t(v) & 0xff);
+    p += w;
+    v += dy;
+  }
 }
 
 void raycast(
@@ -88,19 +143,15 @@ void raycast(
   float px, float py,
   float rx, float ry) {
 
-  enum axis_t { axis_x, axis_y };
-
   // which grid cell we are in
-  int intx = int32_t(px);
-  int inty = int32_t(py);
+  vec2i_t cell = {int32_t(px), int32_t(py)};
 
   // length between axis strides
   const float xdelta = fabsf(1.f / rx);  // x stride
   const float ydelta = fabsf(1.f / ry);  // y stride
 
   // axis step
-  const int32_t stepX = (rx >= 0) ? 1 : -1;
-  const int32_t stepY = (ry >= 0) ? 1 : -1;
+  const vec2i_t step = {(rx >= 0) ? 1 : -1, (ry >= 0) ? 1 : -1};
 
   // length accumulator
   float xlen = xdelta * ((rx < 0) ? fpart(px) : 1.f - fpart(px));
@@ -123,8 +174,12 @@ void raycast(
   // perpendicular ray distance
   float pdist = 0.f;
 
+  float miny = h;
   float oldy = h;
-  float oldHeight = 0.f;
+  float oldHeight = worldMap[cell.x][cell.y];
+
+  vec2f_t isect0 = {px, py};
+  vec2f_t isect1;
 
   axis_t axis = axis_x;
   while (true) {
@@ -133,56 +188,60 @@ void raycast(
       axis = axis_x;
       // step ray
       xlen += xdelta;
-      intx += stepX;
+      cell.x += step.x;
       // step intersection point
       pxy += ddy;
-      pxx += stepX;
+      pxx += step.x;
+      isect1.x = pxx;
+      isect1.y = pxy;
       // calculate perp distance
-      const float distx = (intx - px) + (stepX < 0 ? 1 : 0);
+      const float distx = (cell.x - px) + (step.x < 0 ? 1 : 0);
       pdist = distx / rx;
 
     } else {
       axis = axis_y;
       // step ray
       ylen += ydelta;
-      inty += stepY;
+      cell.y += step.y;
       // step intersection point
       pyx += ddx;
-      pyy += stepY;
+      pyy += step.y;
+      isect1.x = pyx;
+      isect1.y = pyy;
       // calculate perp distance
-      const float disty = (inty - py) + (stepY < 0 ? 1 : 0);
+      const float disty = (cell.y - py) + (step.y < 0 ? 1 : 0);
       pdist = disty / ry;
     }
 
-    const uint8_t height = worldMap[intx][inty];
-
-    float nexty = oldy;
-
-    // project all edges as we need them for correct texture interpolation
+    const uint8_t height = worldMap[cell.x][cell.y];
 
     // draw floor tile
     {
-      const float newy = project(SDL_max(oldHeight, height), pdist);
-      draw_vert(x, newy, oldy, ((intx ^ inty) & 1) ? 0x202020 : 0x303030);
-      nexty = SDL_min(oldy, newy);
+      const float newy = project(oldHeight, pdist);
+      draw_floor(x, miny, newy, oldy, isect0, isect1);
+      oldy = newy;
+      miny = SDL_min(newy, miny);
     }
 
     // draw wall
     if (height > oldHeight) {
-      const float y0 = project(oldHeight, pdist);
-      const float y1 = project(height, pdist);
+      const float y0 = project(height, pdist);
+      const float y1 = project(oldHeight, pdist);
       const uint32_t color = (axis == axis_x) ? 0xffffff : 0x7f7f7f;
-      draw_vert(x, y1, SDL_min(oldy, y0), color);
-      nexty = SDL_min(oldy, y1);
+      draw_wall(x, miny, y0, y1, height, oldHeight, axis, isect1, color);
+      oldy = y0;
+      miny = SDL_min(y0, miny);
     }
 
-    oldy = nexty;
     oldHeight = height;
 
     // check map tile for collision
     if (height >= 9) {
       break;
     }
+
+    // swap intersection points
+    isect0 = isect1;
   }
 }
 
@@ -219,6 +278,29 @@ static void doMove(float moveSpeed, float rotSpeed) {
     playerDX = oldDirX * cosf(rotSpeed) - oldDirY * sinf(rotSpeed);
     playerDY = oldDirX * sinf(rotSpeed) + oldDirY * cosf(rotSpeed);
   }
+  if (keys[SDLK_q]) {
+    eyeLevel += 0.03f;
+  }
+  if (keys[SDLK_a]) {
+    eyeLevel -= 0.03f;
+  }
+}
+
+void present(void) {
+  const uint32_t *src = screen.data();
+  uint32_t *dst = (uint32_t*)surf->pixels;
+  const uint32_t pitch = surf->pitch / 4;
+  for (uint32_t y = 0; y < h; ++y) {
+    for (uint32_t x = 0; x < w; ++x) {
+      const uint32_t rgb = src[x];
+      dst[x * 2 + 0] = rgb;
+      dst[x * 2 + 1] = rgb;
+      dst[x * 2 + 0 + pitch] = rgb;
+      dst[x * 2 + 1 + pitch] = rgb;
+    }
+    src += w;
+    dst += pitch * 2;
+  }
 }
 
 int main(int argc, char *args[])
@@ -226,7 +308,7 @@ int main(int argc, char *args[])
   uint32_t oldTime = 0;
 
   SDL_Init(SDL_INIT_VIDEO);
-  surf = SDL_SetVideoMode(w, h, 32, 0);
+  surf = SDL_SetVideoMode(w * 2, h * 2, 32, 0);
 
   for(bool done = false; !done;)
   {
@@ -258,8 +340,9 @@ int main(int argc, char *args[])
     }
 
     // present the screen
+    present();
     SDL_Flip(surf);
-    SDL_FillRect(surf, nullptr, 0x101010);
+    screen.fill(0x10);
     SDL_Delay(5);
 
     // timing for input and FPS counter
