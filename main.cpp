@@ -7,33 +7,28 @@
 #include <iostream>
 #include <array>
 
-template <typename type_t>
-struct vec2_t {
-  type_t x, y;
+#include "vector.h"
+#include "texture.h"
 
-  vec2_t operator + (const vec2_t &a) const {
-    return vec2_t{a.x + x, a.y + y};
-  }
-};
-
-using vec2f_t = vec2_t<float>;
-using vec2i_t = vec2_t<int32_t>;
 
 enum axis_t { axis_x, axis_y };
+
+
+std::array<texture_t, 16> texture;
 
 #define mapWidth  24
 #define mapHeight 24
 
-uint8_t worldMap[mapWidth][mapHeight] = {
+const uint8_t worldMap[mapWidth][mapHeight] = {
   {9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9},
   {9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,0,0,0,0,0,2,2,2,2,2,0,0,0,0,3,0,3,0,3,0,0,0,9},
-  {9,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,0,0,0,0,0,2,0,0,0,2,0,0,0,0,3,0,1,0,3,0,0,0,9},
-  {9,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,0,0,0,0,0,2,2,0,2,2,0,0,0,0,3,0,3,0,3,0,0,0,9},
+  {9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,9},
+  {9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,1,0,0,0,0,9},
+  {9,0,0,0,0,0,3,4,4,4,3,0,0,0,0,3,2,3,2,3,0,0,0,9},
+  {9,0,0,0,0,0,3,0,0,0,3,0,0,0,1,2,1,1,1,2,1,0,0,9},
+  {9,0,0,0,0,0,3,0,0,0,3,0,0,1,2,3,1,0,1,3,2,1,0,9},
+  {9,0,0,0,0,0,2,0,0,0,2,0,0,0,1,2,1,0,1,2,1,0,0,9},
+  {9,0,0,0,0,0,2,1,0,1,2,0,0,0,0,3,0,3,0,3,0,0,0,9},
   {9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
   {9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
   {9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
@@ -56,11 +51,10 @@ enum {
   h = 240,
 };
 
-float playerX = 22.f;
-float playerY = 12.f;
-
-float playerDX = -1;
-float playerDY =  0;
+// player
+vec3f_t player_pos{22.f, 12.f, 0.f};
+vec3f_t player_acc{0.f, 0.f, 0.f};
+float player_dir = 0.f;
 
 float eyeLevel = 3.f;
 float nearPlaneDist = .66f;
@@ -85,14 +79,26 @@ static float project(float y, float dist) {
   }
 }
 
-static void draw_floor(int32_t x, float miny, float y1, float y2, const vec2f_t &p0, const vec2f_t &p1) {
-  const int32_t drawStart = SDL_max(int32_t(SDL_min(miny, y1)), 0);
-  const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y2)), h - 1);
+static void draw_floor(int32_t x, float miny, float y0, float y1, const vec2f_t &p0, const vec2f_t &p1, const uint32_t dist) {
+  const int32_t drawStart = SDL_max(int32_t(SDL_min(miny, y0)), 0);
+  const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), h - 1);
   if (drawStart >= drawEnd) {
     return;
   }
 
-  const float dy = y2 - y1;
+  // XXX: find p0.5 midpoint and project this to generate y0.5 a curve
+
+  uint32_t level = 0;
+  level += (dist > 3.f ? 1 : 0);
+  level += (dist > 5.f ? 1 : 0);
+  level += (dist > 8.f ? 1 : 0);
+  level += (dist > 16.f ? 1 : 0);
+
+  uint32_t tex_mask = 0x3f >> level;
+  uint32_t tex_size = 64 >> level;
+  const uint32_t *tex = texture[1].getTexture(level);
+
+  const float dy = y1 - y0;
   const vec2f_t step{(p0.x - p1.x) / dy, (p0.y - p1.y) / dy};
 
   vec2f_t f = p1;
@@ -102,123 +108,127 @@ static void draw_floor(int32_t x, float miny, float y1, float y2, const vec2f_t 
   p += drawStart * w;
   for (int32_t y = drawStart; y < drawEnd; ++y) {
 
-    const uint32_t cx = uint32_t(f.x * 256) & 0xff;
-    const uint32_t cy = uint32_t(f.y * 256) & 0xff;
-
-    *p = cx | (cy << 8);
+    const uint32_t cx = uint32_t(f.x * tex_size) & tex_mask;
+    const uint32_t cy = uint32_t(f.y * tex_size) & tex_mask;
+    const uint32_t index =  (uint32_t(f.x * tex_size) & tex_mask) |
+                           ((uint32_t(f.y * tex_size) & tex_mask) * tex_size);
+    *p = tex[index];
 
     p += w;
-
     f = f + step;
   }
 }
 
 static void draw_wall(int32_t x, float miny, float y1, float y2, int32_t height,
-                      int32_t oldheight, axis_t axis, const vec2f_t &isect,
-                      uint32_t rgb) {
+                      int32_t oldheight, axis_t axis, const vec2f_t &isect, const uint32_t dist) {
 
   const int32_t drawStart = SDL_max(int32_t(SDL_min(miny, y1)), 0);
   const int32_t drawEnd = SDL_min(int32_t(SDL_min(miny, y2)), h - 1);
 
-  const float dy = 256.f * float(height - oldheight) / (y1 - y2);
+  uint32_t level = 0;
+  level += (dist > 3.f ? 1 : 0);
+  level += (dist > 6.f ? 1 : 0);
+  level += (dist > 10.f ? 1 : 0);
+  level += (dist > 18.f ? 1 : 0);
 
-  const uint32_t fr = uint32_t(((axis == axis_x) ? isect.y : isect.x) * 256.f);
-  rgb = (fr & 0xff) << 8;
+  uint32_t tex_mask = 0x3f >> level;
+  uint32_t tex_size = 64   >> level;
+  const uint32_t *tex = texture[0].getTexture(level);
 
-  float v = 0.f;
+  const float dy = float(height - oldheight) / (y1 - y2);
+
+  const uint32_t u = uint32_t(((axis == axis_x) ? isect.y : isect.x) * tex_size);
+
+  // adjust if top of wall might extend above screen
+  float v = -dy * (y1 < 0.f ? fabsf(y1) : 0.f);
+  tex += u & tex_mask;
 
   uint32_t *p = screen.data();
   p += x;
   p += drawStart * w;
-  for (int32_t y = drawStart; y < drawEnd; ++y) {
 
-    *p = rgb | (uint32_t(v) & 0xff);
+  for (int32_t y = drawStart; y < drawEnd; ++y) {
+    *p = tex[ tex_size * (uint32_t(v * tex_size / 4) & tex_mask) ];
     p += w;
-    v += dy;
+    v -= dy;
   }
 }
 
 void raycast(
   uint32_t x,
-  float px, float py,
+  float vx, float vy,
   float rx, float ry) {
 
   // which grid cell we are in
-  vec2i_t cell = {int32_t(px), int32_t(py)};
+  vec2i_t cell = {int32_t(vx), int32_t(vy)};
 
   // length between axis strides
-  const float xdelta = fabsf(1.f / rx);  // x stride
-  const float ydelta = fabsf(1.f / ry);  // y stride
+  vec2f_t delta = { fabsf(1.f / rx), fabsf(1.f / ry) };
 
   // axis step
   const vec2i_t step = {(rx >= 0) ? 1 : -1, (ry >= 0) ? 1 : -1};
 
   // length accumulator
-  float xlen = xdelta * ((rx < 0) ? fpart(px) : 1.f - fpart(px));
-  float ylen = ydelta * ((ry < 0) ? fpart(py) : 1.f - fpart(py));
+  vec2f_t len = { delta.x * ((rx < 0) ? fpart(vx) : 1.f - fpart(vx)),
+                  delta.y * ((ry < 0) ? fpart(vy) : 1.f - fpart(vy)) };
 
   // axis travel per grid cell
-  const float ddx = rx / fabsf(ry);
-  const float ddy = ry / fabsf(rx);
+  const vec2f_t dd = { rx / fabsf(ry), ry / fabsf(rx) };
 
   // starting point for x axis intersections
-  float pxx = (rx > 0) ? ipart(px) : ipart(1.f + px);
-  const float pdx = pxx - px;
-  float pxy = py + pdx * (ry / rx);
+  vec2f_t px;
+  px.x = (rx > 0) ? ipart(vx) : ipart(1.f + vx);
+  px.y = vy + (px.x - vx) * (ry / rx);
 
   // starting point for y axis intersections
-  float pyy = (ry > 0) ? ipart(py) : ipart(1.f + py);
-  const float pdy = pyy - py;
-  float pyx = px + pdy * (rx / ry);
+  vec2f_t py;
+  py.y = (ry > 0) ? ipart(vy) : ipart(1.f + vy);
+  py.x = vx + (py.y - vy) * (rx / ry);
 
   // perpendicular ray distance
   float pdist = 0.f;
 
   float miny = h;
   float oldy = h;
-  float oldHeight = worldMap[cell.x][cell.y];
+  uint8_t oldHeight = worldMap[cell.x][cell.y];
 
-  vec2f_t isect0 = {px, py};
+  vec2f_t isect0 = {vx, vy};
   vec2f_t isect1;
 
   axis_t axis = axis_x;
   while (true) {
 
-    if (xlen < ylen) {
+    // step ray to next intersection
+    if (len.x < len.y) {
       axis = axis_x;
       // step ray
-      xlen += xdelta;
+      len.x += delta.x;
       cell.x += step.x;
       // step intersection point
-      pxy += ddy;
-      pxx += step.x;
-      isect1.x = pxx;
-      isect1.y = pxy;
+      px += vec2f_t { float(step.x), dd.y };
+      isect1 = px;
       // calculate perp distance
-      const float distx = (cell.x - px) + (step.x < 0 ? 1 : 0);
-      pdist = distx / rx;
+      pdist = ((cell.x - vx) + (step.x < 0 ? 1 : 0)) / rx;
 
     } else {
       axis = axis_y;
       // step ray
-      ylen += ydelta;
+      len.y += delta.y;
       cell.y += step.y;
       // step intersection point
-      pyx += ddx;
-      pyy += step.y;
-      isect1.x = pyx;
-      isect1.y = pyy;
+      py += vec2f_t { dd.x, float(step.y) };
+      isect1 = py;
       // calculate perp distance
-      const float disty = (cell.y - py) + (step.y < 0 ? 1 : 0);
-      pdist = disty / ry;
+      pdist = ((cell.y - vy) + (step.y < 0 ? 1 : 0)) / ry;
     }
 
+    // current floor height
     const uint8_t height = worldMap[cell.x][cell.y];
 
     // draw floor tile
     {
       const float newy = project(oldHeight, pdist);
-      draw_floor(x, miny, newy, oldy, isect0, isect1);
+      draw_floor(x, miny, newy, oldy, isect0, isect1, pdist);
       oldy = newy;
       miny = SDL_min(newy, miny);
     }
@@ -227,8 +237,7 @@ void raycast(
     if (height > oldHeight) {
       const float y0 = project(height, pdist);
       const float y1 = project(oldHeight, pdist);
-      const uint32_t color = (axis == axis_x) ? 0xffffff : 0x7f7f7f;
-      draw_wall(x, miny, y0, y1, height, oldHeight, axis, isect1, color);
+      draw_wall(x, miny, y0, y1, height, oldHeight, axis, isect1, pdist);
       oldy = y0;
       miny = SDL_min(y0, miny);
     }
@@ -248,35 +257,34 @@ void raycast(
 static void doMove(float moveSpeed, float rotSpeed) {
   const uint8_t *keys = SDL_GetKeyState(nullptr);
 
+  const vec2f_t dir = { sinf(player_dir), cosf(player_dir) };
+  const int32_t pz = int32_t(player_pos.z + 1);
+
   // move forward if no wall in front of you
-  if (keys[SDLK_UP]) {
-    if (worldMap[int(playerX + playerDX * moveSpeed)][int(playerY)] == 0)
-      playerX += playerDX * moveSpeed;
-    if (worldMap[int(playerX)][int(playerY + playerDY * moveSpeed)] == 0)
-      playerY += playerDY * moveSpeed;
+  if (keys[SDLK_UP] || keys[SDLK_w]) {
+    if (worldMap[int(player_pos.x + dir.x * moveSpeed)][int(player_pos.y)] <= pz) {
+      player_pos.x += dir.x * moveSpeed;
+    }
+    if (worldMap[int(player_pos.x)][int(player_pos.y + dir.y * moveSpeed)] <= pz) {
+      player_pos.y += dir.y * moveSpeed;
+    }
   }
   // move backwards if no wall behind you
-  if (keys[SDLK_DOWN]) {
-    if (worldMap[int(playerX - playerDX * moveSpeed)][int(playerY)] == 0)
-      playerX -= playerDX * moveSpeed;
-    if (worldMap[int(playerX)][int(playerY - playerDY * moveSpeed)] == 0)
-      playerY -= playerDY * moveSpeed;
+  if (keys[SDLK_DOWN] || keys[SDLK_s]) {
+    if (worldMap[int(player_pos.x - dir.x * moveSpeed)][int(player_pos.y)] <= pz) {
+      player_pos.x -= dir.x * moveSpeed;
+    }
+    if (worldMap[int(player_pos.x)][int(player_pos.y - dir.y * moveSpeed)] <= pz) {
+      player_pos.y -= dir.y * moveSpeed;
+    }
   }
   // rotate to the right
   if (keys[SDLK_RIGHT]) {
-    // both camera direction and camera plane must be rotated
-    const float oldDirX = playerDX;
-    const float oldDirY = playerDY;
-    playerDX = oldDirX * cosf(-rotSpeed) - oldDirY * sinf(-rotSpeed);
-    playerDY = oldDirX * sinf(-rotSpeed) + oldDirY * cosf(-rotSpeed);
+    player_dir += rotSpeed;
   }
   // rotate to the left
   if (keys[SDLK_LEFT]) {
-    // both camera direction and camera plane must be rotated
-    const float oldDirX = playerDX;
-    const float oldDirY = playerDY;
-    playerDX = oldDirX * cosf(rotSpeed) - oldDirY * sinf(rotSpeed);
-    playerDY = oldDirX * sinf(rotSpeed) + oldDirY * cosf(rotSpeed);
+    player_dir -= rotSpeed;
   }
   if (keys[SDLK_q]) {
     eyeLevel += 0.03f;
@@ -284,6 +292,21 @@ static void doMove(float moveSpeed, float rotSpeed) {
   if (keys[SDLK_a]) {
     eyeLevel -= 0.03f;
   }
+  if (keys[SDLK_ESCAPE]) {
+    SDL_Quit();
+  }
+
+  const float fl = float(worldMap[int(player_pos.x)][int(player_pos.y)]);
+  if (player_pos.z < fl) {
+    player_pos.z = fl;
+    player_acc.z = 0.f;
+  }
+  else {
+    player_acc.z -= 0.01f;
+    player_pos.z += player_acc.z;
+  }
+
+  eyeLevel += 0.1f * ((player_pos.z + 3.f) - eyeLevel);
 }
 
 void present(void) {
@@ -303,12 +326,23 @@ void present(void) {
   }
 }
 
+bool load_textures() {
+  texture[0].load("C:\\repos\\loderay\\data\\walls\\boxy.bmp");
+  texture[1].load("C:\\repos\\loderay\\data\\floors\\hex.bmp");
+  return true;
+}
+
 int main(int argc, char *args[])
 {
   uint32_t oldTime = 0;
 
   SDL_Init(SDL_INIT_VIDEO);
-  surf = SDL_SetVideoMode(w * 2, h * 2, 32, 0);
+
+  if (!load_textures()) {
+    return 1;
+  }
+
+  surf = SDL_SetVideoMode(w * 2, h * 2, 32, SDL_FULLSCREEN);
 
   for(bool done = false; !done;)
   {
@@ -327,16 +361,19 @@ int main(int argc, char *args[])
       }
     }
 
-    // for screen width
-    for(int x = 0; x < w; x++)
     {
-      // calculate ray direction
-      const float planeX =  playerDY * nearPlaneDist;
-      const float planeY = -playerDX * nearPlaneDist;
-      const float cameraX = 2.f * x / float(w) - 1.f;
-      const float rayDirX = playerDX + planeX * cameraX;
-      const float rayDirY = playerDY + planeY * cameraX;
-      raycast(x, playerX, playerY, rayDirX, rayDirY);
+      const vec2f_t dir = {sinf(player_dir), cosf(player_dir)};
+      const float planeX = dir.y * nearPlaneDist;
+      const float planeY = -dir.x * nearPlaneDist;
+
+      // for screen width
+      for (int x = 0; x < w; x++) {
+        // calculate ray direction
+        const float cameraX = 2.f * x / float(w) - 1.f;
+        const float rayDirX = dir.x + planeX * cameraX;
+        const float rayDirY = dir.y + planeY * cameraX;
+        raycast(x, player_pos.x, player_pos.y, rayDirX, rayDirY);
+      }
     }
 
     // present the screen
