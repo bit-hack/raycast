@@ -73,14 +73,18 @@ void texture_t::_genMips(void) {
         const uint32_t t2 = src[(x * 2 + 0) + (y * 2 + 1) * size * 2];
         const uint32_t t3 = src[(x * 2 + 1) + (y * 2 + 1) * size * 2];
         // average channels together
-        const uint32_t r = (((t0 & 0xff0000) + (t1 & 0xff0000) +
-                             (t2 & 0xff0000) + (t3 & 0xff0000)) >> 2) & 0xff0000;
-        const uint32_t g = (((t0 & 0x00ff00) + (t1 & 0x00ff00) +
-                             (t2 & 0x00ff00) + (t3 & 0x00ff00)) >> 2) & 0x00ff00;
-        const uint32_t b = (((t0 & 0x0000ff) + (t1 & 0x0000ff) +
-                             (t2 & 0x0000ff) + (t3 & 0x0000ff)) >> 2) & 0x0000ff;
+        uint32_t r = (((t0 & 0xff0000) + (t1 & 0xff0000) +
+                       (t2 & 0xff0000) + (t3 & 0xff0000)) >> 2);
+        uint32_t g = (((t0 & 0x00ff00) + (t1 & 0x00ff00) +
+                       (t2 & 0x00ff00) + (t3 & 0x00ff00)) >> 2);
+        uint32_t b = (((t0 & 0x0000ff) + (t1 & 0x0000ff) +
+                       (t2 & 0x0000ff) + (t3 & 0x0000ff)) >> 2);
+        // diminish
+        r = (r * 230) >> 8;
+        g = (g * 230) >> 8;
+        b = (b * 230) >> 8;
         // store
-        dst[x] = r | g | b;
+        dst[x] = (r & 0xff0000) | (g & 0x00ff00) | (b & 0x0000ff);
       }
       dst += size;
     }
