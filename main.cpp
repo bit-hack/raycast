@@ -40,48 +40,42 @@ struct map_t {
     return height[x + y * mapWidth];
   }
 
-  void resolve(const vec2f_t &p, const float radius, vec2f_t &r) const {
-    bool first = true;
-    r = vec2f_t{ 0.f, 0.f };
-    const vec2i_t min{int32_t(p.x - radius), int32_t(p.y - radius)};
-    const vec2i_t max{int32_t(p.x + radius), int32_t(p.y + radius)};
+  void resolve(const vec2f_t &p, const float r, vec2f_t &res) const {
+
+    res = vec2f_t{ 1.f, 1.f };
+
+    const vec2i_t min{SDL_max(int32_t(p.x - r), 0),
+                      SDL_max(int32_t(p.y - r), 0)};
+    const vec2i_t max{SDL_min(int32_t(p.x + r), mapWidth -1),
+                      SDL_min(int32_t(p.y + r), mapHeight-1)};
+
+    bool setx = false, sety = false;
+
     for (int32_t y = min.y; y <= max.y; ++y) {
       for (int32_t x = min.x; x <= max.x; ++x) {
         const uint8_t b = blockers[x + y * mapWidth];
-        if (b & block_up) {
-          const float dy = (y + 1.f) - (p.y - radius);
-          if (first || fabsf(dy) < fabsf(r.y) && fabsf(dy) < fabsf(r.x)) {
-            r.x = 0;
-            r.y = dy;
-            first = false;
-          }
+
+        const float dy0 = (b & block_up)    ? ((y + 0.f) - (p.y + r)) : -1.f;
+        const float dy1 = (b & block_down)  ? ((y + 1.f) - (p.y - r)) :  1.f;
+        const float dx0 = (b & block_left)  ? ((x + 0.f) - (p.x + r)) : -1.f;
+        const float dx1 = (b & block_right) ? ((x + 1.f) - (p.x - r)) :  1.f;
+
+        const float rx = fabsf(dx0) < fabsf(dx1) ? dx0 : dx1;
+        const float ry = fabsf(dy0) < fabsf(dy1) ? dy0 : dy1;
+
+        if (fabsf(rx) < fabsf(ry)) {
+          res.x = fabsf(rx) < fabsf(res.x) ? rx : res.x;
+          setx = true;
         }
-        if (b & block_down) {
-          const float dy = (y + 0.f) - (p.y + radius);
-          if (first || fabsf(dy) < fabsf(r.y)) {
-            r.x = 0;
-            r.y = dy;
-            first = false;
-          }
-        }
-        if (b & block_left) {
-          const float dx = (x + 1.f) - (p.x - radius);
-          if (first || fabsf(dx) < fabsf(r.x)) {
-            r.x = dx;
-            r.y = 0.f;
-            first = false;
-          }
-        }
-        if (b & block_right) {
-          const float dx = (x + 0.f) - (p.x + radius);
-          if (first || fabsf(dx) < fabsf(r.x)) {
-            r.x = dx;
-            r.y = 0.f;
-            first = false;
-          }
+        else {
+          res.y = fabsf(ry) < fabsf(res.y) ? ry : res.y;
+//          sety = true;
         }
       }
     }
+
+    res.x = setx ? res.x : 0.f;
+    res.y = sety ? res.y : 0.f;
   }
 
 protected:
@@ -92,13 +86,13 @@ protected:
   void calcBlockers(void) {
     for (size_t y = 0; y < mapHeight; ++y) {
       for (size_t x = 0; x < mapWidth; ++x) {
-        // +1 so we can climb stairs
-        const uint8_t h = height[x + y * mapWidth] + 1;
+        // if anything two tiles below us block in that direction
+        const uint8_t h = height[x + y * mapWidth];
         uint8_t flags = 0;
-        flags |= getHeight_(x, y - 1) <= h ? 0 : block_up;
-        flags |= getHeight_(x, y + 1) <= h ? 0 : block_down;
-        flags |= getHeight_(x - 1, y) <= h ? 0 : block_left;
-        flags |= getHeight_(x + 1, y) <= h ? 0 : block_right;
+        flags |= (getHeight_(x, y - 1) + 2) <= h ? block_up    : 0;
+        flags |= (getHeight_(x, y + 1) + 2) <= h ? block_down  : 0;
+        flags |= (getHeight_(x - 1, y) + 2) <= h ? block_left  : 0;
+        flags |= (getHeight_(x + 1, y) + 2) <= h ? block_right : 0;
         blockers[x + y * mapWidth] = flags;
       }
     }
@@ -361,7 +355,7 @@ static void doMove(float moveSpeed, float rotSpeed) {
   {
     const vec2f_t p = { player_pos.x, player_pos.y };
     vec2f_t res = { 0.f, 0.f };
-    map.resolve(p, 0.1f, res);
+    map.resolve(p, 0.3f, res);
     player_pos.x += res.x * 0.5f;
     player_pos.y += res.y * 0.5f;
   }
