@@ -16,35 +16,52 @@ enum axis_t { axis_x, axis_y };
 
 std::array<texture_t, 16> texture;
 
-#define mapWidth  24
-#define mapHeight 24
 
-const uint8_t worldMap[mapWidth][mapHeight] = {
-  {9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9},
-  {9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,9},
-  {9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,1,0,0,0,0,9},
-  {9,0,0,0,0,0,3,4,4,4,3,0,0,0,0,3,2,3,2,3,0,0,0,9},
-  {9,0,0,0,0,0,3,0,0,0,3,0,0,0,1,2,1,1,1,2,1,0,0,9},
-  {9,0,0,0,0,0,3,0,0,0,3,0,0,1,2,3,1,0,1,3,2,1,0,9},
-  {9,0,0,0,0,0,2,0,0,0,2,0,0,0,1,2,1,0,1,2,1,0,0,9},
-  {9,0,0,0,0,0,2,1,0,1,2,0,0,0,0,3,0,3,0,3,0,0,0,9},
-  {9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,0,0,0,0,0,1,2,3,4,5,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,0,0,0,0,0,1,2,3,4,5,0,0,0,1,1,1,0,0,0,0,0,0,9},
-  {9,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,1,0,0,0,0,0,0,9},
-  {9,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,9},
-  {9,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,4,0,4,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,4,0,0,0,0,7,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,4,0,4,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,4,0,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9},
-  {9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9}
+struct map_t {
+  static const size_t mapWidth  = 24;
+  static const size_t mapHeight = 24;
+
+  std::array<uint8_t, mapWidth * mapHeight> height;
+  std::array<uint8_t, mapWidth * mapHeight> blockers;
+
+  enum {
+    block_left  = 1,
+    block_right = 2,
+    block_up    = 4,
+    block_down  = 8
+  };
+
+  void load(const uint8_t *data) {
+    memcpy(height.data(), data, height.size());
+    calcBlockers();
+  }
+
+  const uint8_t getHeight(int32_t x, int32_t y) const {
+    return height[x + y * mapWidth];
+  }
+
+protected:
+  uint8_t getHeight_(int32_t x, int32_t y) const {
+    return (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight) ? 0xff : getHeight(x, y);
+  }
+
+  void calcBlockers(void) {
+    for (size_t y = 0; y < mapHeight; ++y) {
+      for (size_t x = 0; x < mapWidth; ++x) {
+        // +1 so we can climb stairs
+        const uint8_t h = height[x + y * mapWidth] + 1;
+        uint8_t flags = 0;
+        flags |= getHeight_(x, y - 1) <= h ? 0 : block_up;
+        flags |= getHeight_(x, y + 1) <= h ? 0 : block_down;
+        flags |= getHeight_(x - 1, y) <= h ? 0 : block_left;
+        flags |= getHeight_(x + 1, y) <= h ? 0 : block_right;
+        blockers[x + y * mapWidth] = flags;
+      }
+    }
+  }
 };
+
+map_t map;
 
 enum {
   w = 320,
@@ -79,7 +96,7 @@ static float project(float y, float dist) {
   }
 }
 
-static void draw_floor(int32_t x, float miny, float y0, float y1, const vec2f_t &p0, const vec2f_t &p1, const uint32_t dist) {
+static void draw_floor(int32_t x, float miny, float y0, float y1, const vec2f_t &p0, const vec2f_t &p1, const float dist) {
   const int32_t drawStart = SDL_max(int32_t(SDL_min(miny, y0)), 0);
   const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), h - 1);
   if (drawStart >= drawEnd) {
@@ -120,7 +137,7 @@ static void draw_floor(int32_t x, float miny, float y0, float y1, const vec2f_t 
 }
 
 static void draw_wall(int32_t x, float miny, float y1, float y2, int32_t height,
-                      int32_t oldheight, axis_t axis, const vec2f_t &isect, const uint32_t dist) {
+                      int32_t oldheight, axis_t axis, const vec2f_t &isect, const float dist) {
 
   const int32_t drawStart = SDL_max(int32_t(SDL_min(miny, y1)), 0);
   const int32_t drawEnd = SDL_min(int32_t(SDL_min(miny, y2)), h - 1);
@@ -190,7 +207,7 @@ void raycast(
 
   float miny = h;
   float oldy = h;
-  uint8_t oldHeight = worldMap[cell.x][cell.y];
+  uint8_t oldHeight = map.getHeight(cell.x, cell.y);
 
   vec2f_t isect0 = {vx, vy};
   vec2f_t isect1;
@@ -223,7 +240,7 @@ void raycast(
     }
 
     // current floor height
-    const uint8_t height = worldMap[cell.x][cell.y];
+    const uint8_t height = map.getHeight(cell.x, cell.y);
 
     // draw floor tile
     {
@@ -262,19 +279,19 @@ static void doMove(float moveSpeed, float rotSpeed) {
 
   // move forward if no wall in front of you
   if (keys[SDLK_UP] || keys[SDLK_w]) {
-    if (worldMap[int(player_pos.x + dir.x * moveSpeed)][int(player_pos.y)] <= pz) {
+    if (map.getHeight(int(player_pos.x + dir.x * moveSpeed), int(player_pos.y)) <= pz) {
       player_pos.x += dir.x * moveSpeed;
     }
-    if (worldMap[int(player_pos.x)][int(player_pos.y + dir.y * moveSpeed)] <= pz) {
+    if (map.getHeight(int(player_pos.x), int(player_pos.y + dir.y * moveSpeed)) <= pz) {
       player_pos.y += dir.y * moveSpeed;
     }
   }
   // move backwards if no wall behind you
   if (keys[SDLK_DOWN] || keys[SDLK_s]) {
-    if (worldMap[int(player_pos.x - dir.x * moveSpeed)][int(player_pos.y)] <= pz) {
+    if (map.getHeight(int(player_pos.x - dir.x * moveSpeed), int(player_pos.y)) <= pz) {
       player_pos.x -= dir.x * moveSpeed;
     }
-    if (worldMap[int(player_pos.x)][int(player_pos.y - dir.y * moveSpeed)] <= pz) {
+    if (map.getHeight(int(player_pos.x), int(player_pos.y - dir.y * moveSpeed)) <= pz) {
       player_pos.y -= dir.y * moveSpeed;
     }
   }
@@ -296,7 +313,7 @@ static void doMove(float moveSpeed, float rotSpeed) {
     SDL_Quit();
   }
 
-  const float fl = float(worldMap[int(player_pos.x)][int(player_pos.y)]);
+  const float fl = float(map.getHeight(int(player_pos.x), int(player_pos.y)));
   if (player_pos.z < fl) {
     player_pos.z = fl;
     player_acc.z = 0.f;
@@ -332,6 +349,33 @@ bool load_textures() {
   return true;
 }
 
+const std::array<uint8_t, map_t::mapWidth * map_t::mapHeight> worldMap = {
+  9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,
+  9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,
+  9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,9,
+  9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,1,0,0,0,0,9,
+  9,0,0,0,0,0,3,4,4,4,3,0,0,0,0,3,2,3,2,3,0,0,0,9,
+  9,0,0,0,0,0,3,0,0,0,3,0,0,0,1,2,1,1,1,2,1,0,0,9,
+  9,0,0,0,0,0,3,0,0,0,3,0,0,1,2,3,1,0,1,3,2,1,0,9,
+  9,0,0,0,0,0,2,0,0,0,2,0,0,0,1,2,1,0,1,2,1,0,0,9,
+  9,0,0,0,0,0,2,1,0,1,2,0,0,0,0,3,0,3,0,3,0,0,0,9,
+  9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,
+  9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,
+  9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,
+  9,0,0,0,0,0,1,2,3,4,5,0,0,0,0,0,0,0,0,0,0,0,0,9,
+  9,0,0,0,0,0,1,2,3,4,5,0,0,0,1,1,1,0,0,0,0,0,0,9,
+  9,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,1,0,0,0,0,0,0,9,
+  9,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,9,
+  9,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,
+  9,4,0,4,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,
+  9,4,0,0,0,0,7,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,
+  9,4,0,4,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,
+  9,4,0,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,
+  9,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,
+  9,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,
+  9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9
+};
+
 int main(int argc, char *args[])
 {
   uint32_t oldTime = 0;
@@ -341,8 +385,9 @@ int main(int argc, char *args[])
   if (!load_textures()) {
     return 1;
   }
+  map.load(worldMap.data());
 
-  surf = SDL_SetVideoMode(w * 2, h * 2, 32, SDL_FULLSCREEN);
+  surf = SDL_SetVideoMode(w * 2, h * 2, 32, 0);
 
   for(bool done = false; !done;)
   {
