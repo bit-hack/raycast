@@ -40,6 +40,50 @@ struct map_t {
     return height[x + y * mapWidth];
   }
 
+  void resolve(const vec2f_t &p, const float radius, vec2f_t &r) const {
+    bool first = true;
+    r = vec2f_t{ 0.f, 0.f };
+    const vec2i_t min{int32_t(p.x - radius), int32_t(p.y - radius)};
+    const vec2i_t max{int32_t(p.x + radius), int32_t(p.y + radius)};
+    for (int32_t y = min.y; y <= max.y; ++y) {
+      for (int32_t x = min.x; x <= max.x; ++x) {
+        const uint8_t b = blockers[x + y * mapWidth];
+        if (b & block_up) {
+          const float dy = (y + 1.f) - (p.y - radius);
+          if (first || fabsf(dy) < fabsf(r.y) && fabsf(dy) < fabsf(r.x)) {
+            r.x = 0;
+            r.y = dy;
+            first = false;
+          }
+        }
+        if (b & block_down) {
+          const float dy = (y + 0.f) - (p.y + radius);
+          if (first || fabsf(dy) < fabsf(r.y)) {
+            r.x = 0;
+            r.y = dy;
+            first = false;
+          }
+        }
+        if (b & block_left) {
+          const float dx = (x + 1.f) - (p.x - radius);
+          if (first || fabsf(dx) < fabsf(r.x)) {
+            r.x = dx;
+            r.y = 0.f;
+            first = false;
+          }
+        }
+        if (b & block_right) {
+          const float dx = (x + 0.f) - (p.x + radius);
+          if (first || fabsf(dx) < fabsf(r.x)) {
+            r.x = dx;
+            r.y = 0.f;
+            first = false;
+          }
+        }
+      }
+    }
+  }
+
 protected:
   uint8_t getHeight_(int32_t x, int32_t y) const {
     return (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight) ? 0xff : getHeight(x, y);
@@ -313,6 +357,15 @@ static void doMove(float moveSpeed, float rotSpeed) {
     SDL_Quit();
   }
 
+  // resolve player collisions
+  {
+    const vec2f_t p = { player_pos.x, player_pos.y };
+    vec2f_t res = { 0.f, 0.f };
+    map.resolve(p, 0.1f, res);
+    player_pos.x += res.x * 0.5f;
+    player_pos.y += res.y * 0.5f;
+  }
+
   const float fl = float(map.getHeight(int(player_pos.x), int(player_pos.y)));
   if (player_pos.z < fl) {
     player_pos.z = fl;
@@ -344,8 +397,8 @@ void present(void) {
 }
 
 bool load_textures() {
-  texture[0].load("C:\\repos\\loderay\\data\\walls\\boxy.bmp");
-  texture[1].load("C:\\repos\\loderay\\data\\floors\\hex.bmp");
+  texture[0].load("/home/aidan/projects/raycast/data/walls/boxy.bmp");
+  texture[1].load("/home/aidan/projects/raycast/data/floors/hex.bmp");
   return true;
 }
 

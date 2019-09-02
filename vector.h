@@ -18,7 +18,7 @@ struct vec3_t {
   type_t x, y, z;
 
   vec3_t operator + (const vec3_t &a) const {
-    return vec2_t{a.x + x, a.y + y, a.z + z};
+    return vec3_t{a.x + x, a.y + y, a.z + z};
   }
 
   void operator += (const vec3_t &a) {
