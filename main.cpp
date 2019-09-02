@@ -16,6 +16,13 @@ enum axis_t { axis_x, axis_y };
 
 std::array<texture_t, 16> texture;
 
+// player
+vec3f_t player_pos{22.f, 12.f, 0.f};
+vec3f_t player_acc{0.f, 0.f, 0.f};
+float player_dir = 0.f;
+float eyeLevel = 3.f;
+float nearPlaneDist = .66f;
+
 
 struct map_t {
   static const size_t mapWidth  = 24;
@@ -42,7 +49,10 @@ struct map_t {
 
   void resolve(const vec2f_t &p, const float r, vec2f_t &res) const {
 
-    res = vec2f_t{ 1.f, 1.f };
+    // player height
+    const uint8_t ph = uint8_t(player_pos.z + 0.5f);
+
+    res = vec2f_t{ 99.f, 99.f };
 
     const vec2i_t min{SDL_max(int32_t(p.x - r), 0),
                       SDL_max(int32_t(p.y - r), 0)};
@@ -53,23 +63,30 @@ struct map_t {
 
     for (int32_t y = min.y; y <= max.y; ++y) {
       for (int32_t x = min.x; x <= max.x; ++x) {
+
+        // test tile height
+        const uint8_t h = getHeight(x, y);
+        if (h <= ph + 1)
+          continue;
+
         const uint8_t b = blockers[x + y * mapWidth];
 
-        const float dy0 = (b & block_up)    ? ((y + 0.f) - (p.y + r)) : -1.f;
-        const float dy1 = (b & block_down)  ? ((y + 1.f) - (p.y - r)) :  1.f;
-        const float dx0 = (b & block_left)  ? ((x + 0.f) - (p.x + r)) : -1.f;
-        const float dx1 = (b & block_right) ? ((x + 1.f) - (p.x - r)) :  1.f;
+        const float dy0 = (b & block_up)    ? ((y + 0.f) - (p.y + r)) : 99.f;
+        const float dy1 = (b & block_down)  ? ((y + 1.f) - (p.y - r)) : 99.f;
+
+        const float dx0 = (b & block_left)  ? ((x + 0.f) - (p.x + r)) : 99.f;
+        const float dx1 = (b & block_right) ? ((x + 1.f) - (p.x - r)) : 99.f;
 
         const float rx = fabsf(dx0) < fabsf(dx1) ? dx0 : dx1;
         const float ry = fabsf(dy0) < fabsf(dy1) ? dy0 : dy1;
 
         if (fabsf(rx) < fabsf(ry)) {
           res.x = fabsf(rx) < fabsf(res.x) ? rx : res.x;
-          setx = true;
+          setx = res.x < 98.f;
         }
         else {
           res.y = fabsf(ry) < fabsf(res.y) ? ry : res.y;
-//          sety = true;
+          sety = res.y < 98.f;
         }
       }
     }
@@ -105,14 +122,6 @@ enum {
   w = 320,
   h = 240,
 };
-
-// player
-vec3f_t player_pos{22.f, 12.f, 0.f};
-vec3f_t player_acc{0.f, 0.f, 0.f};
-float player_dir = 0.f;
-
-float eyeLevel = 3.f;
-float nearPlaneDist = .66f;
 
 SDL_Surface *surf;
 std::array<uint32_t, w*h> screen;
@@ -315,23 +324,21 @@ static void doMove(float moveSpeed, float rotSpeed) {
   const vec2f_t dir = { sinf(player_dir), cosf(player_dir) };
   const int32_t pz = int32_t(player_pos.z + 1);
 
+  player_pos.x += player_acc.x;
+  player_pos.y += player_acc.y;
+
+  player_acc.x *= 0.95f;
+  player_acc.y *= 0.95f;
+
   // move forward if no wall in front of you
   if (keys[SDLK_UP] || keys[SDLK_w]) {
-    if (map.getHeight(int(player_pos.x + dir.x * moveSpeed), int(player_pos.y)) <= pz) {
-      player_pos.x += dir.x * moveSpeed;
-    }
-    if (map.getHeight(int(player_pos.x), int(player_pos.y + dir.y * moveSpeed)) <= pz) {
-      player_pos.y += dir.y * moveSpeed;
-    }
+    player_acc.x = dir.x * moveSpeed;
+    player_acc.y = dir.y * moveSpeed;
   }
   // move backwards if no wall behind you
   if (keys[SDLK_DOWN] || keys[SDLK_s]) {
-    if (map.getHeight(int(player_pos.x - dir.x * moveSpeed), int(player_pos.y)) <= pz) {
-      player_pos.x -= dir.x * moveSpeed;
-    }
-    if (map.getHeight(int(player_pos.x), int(player_pos.y - dir.y * moveSpeed)) <= pz) {
-      player_pos.y -= dir.y * moveSpeed;
-    }
+    player_acc.x = -dir.x * moveSpeed;
+    player_acc.y = -dir.y * moveSpeed;
   }
   // rotate to the right
   if (keys[SDLK_RIGHT]) {
@@ -390,9 +397,12 @@ void present(void) {
   }
 }
 
+//#define DIR_ROOT "/home/aidan/projects/raycast"
+#define DIR_ROOT "C:/repos/loderay"
+
 bool load_textures() {
-  texture[0].load("/home/aidan/projects/raycast/data/walls/boxy.bmp");
-  texture[1].load("/home/aidan/projects/raycast/data/floors/hex.bmp");
+  texture[0].load(DIR_ROOT "/data/walls/boxy.bmp");
+  texture[1].load(DIR_ROOT "/data/floors/hex.bmp");
   return true;
 }
 
