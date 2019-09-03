@@ -416,13 +416,32 @@ int main(int argc, char *args[])
       }
     }
 
+    // test projection
     {
-      const vec2f_t p = project(vec3f_t{ 12, 12, 4 });
-      if (p.x >= 0 && p.y >= 0 && p.x < w && p.y < h) {
-        screen.data()[ int32_t(p.x) + int32_t(p.y) * w ] = 0xffffff;
-      }
+      const std::array<vec3f_t, 8> points = {
+        vec3f_t{12, 12, 1}, vec3f_t{12, 13, 1},
+        vec3f_t{13, 12, 1}, vec3f_t{13, 13, 1},
+        vec3f_t{12, 12, 2}, vec3f_t{12, 13, 2},
+        vec3f_t{13, 12, 2}, vec3f_t{13, 13, 2},
+      };
+      vec2f_t p;
+      float dist;
+      for (const auto &j : points) {
+        dist = project(j, p);
+        if (dist >= 0.f) {
+          if (p.x >= 0 && p.y >= 0 && p.x < w && p.y < h) {
 
-//      printf("%f, %f\n", p.x, p.y);
+            const int32_t index = int32_t(p.x) + int32_t(p.y) * w;
+
+            if (depth[index] < 256 * dist) {
+              screen[index] = 0xff0000;
+            }
+            else {
+              screen[index] = 0x00ff00;
+            }
+          }
+        }
+      }
     }
 
     // present the screen

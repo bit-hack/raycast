@@ -43,7 +43,7 @@ inline float project(float y, float dist) {
   }
 }
 
-inline vec2f_t project(vec3f_t &p) {
+inline float project(const vec3f_t &p, vec2f_t &out) {
 
   const vec2f_t cam_dir = { sinf(player_dir), cosf(player_dir) };
   const vec2f_t plane{ cam_dir.y,-cam_dir.x };
@@ -55,10 +55,14 @@ inline vec2f_t project(vec3f_t &p) {
   const vec2f_t projected = diff / dist;
   const float side = vec2f_t::dot(projected, plane);
 
-  const float x = w / 2 + w * side * near_plane_scale;
+  // XXX: no idea why I need the fudge yet
+  const float fudge = 1.1f;
+
+  const float x = w / 2 + w * side * near_plane_scale * fudge;
   const float y = (h / 2.f) - 64 * (p.z - eye_level) / dist;
 
-  return vec2f_t{x, y};
+  out = vec2f_t{x, y};
+  return dist;
 }
 
 inline float cam_distance(const vec3f_t &p) {
