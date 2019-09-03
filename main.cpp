@@ -1,5 +1,4 @@
 #define _SDL_main_h
-#include <SDL/SDL.h>
 
 #include <cmath>
 #include <string>
@@ -7,6 +6,7 @@
 #include <iostream>
 #include <array>
 
+#include "SDL.h"
 #include "vector.h"
 #include "texture.h"
 
@@ -397,8 +397,8 @@ void present(void) {
   }
 }
 
-//#define DIR_ROOT "/home/aidan/projects/raycast"
-#define DIR_ROOT "C:/repos/loderay"
+// The asset files are currently loaded relative to the executable.
+#define DIR_ROOT "."
 
 bool load_textures() {
   texture[0].load(DIR_ROOT "/data/walls/boxy.bmp");
