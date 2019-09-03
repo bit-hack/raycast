@@ -11,6 +11,7 @@
 #include "vector.h"
 #include "texture.h"
 #include "map.h"
+#include "sprites.h"
 
 
 enum axis_t { axis_x, axis_y };
@@ -179,8 +180,6 @@ void raycast(
   axis_t axis = axis_x;
   while (true) {
 
-    const float old_dist = pdist;
-
     // step ray to next intersection
     if (len.x < len.y) {
       axis = axis_x;
@@ -211,7 +210,7 @@ void raycast(
     // draw floor tile
     {
       const float newy = project(oldHeight, pdist);
-      draw_floor(x, miny, newy, oldy, isect0, isect1, old_dist);
+      draw_floor(x, miny, newy, oldy, isect0, isect1, pdist);
       oldy = newy;
       miny = SDL_min(newy, miny);
     }
@@ -442,6 +441,10 @@ int main(int argc, char *args[])
           }
         }
       }
+      sprite_t sprite;
+      sprite.w = 32;
+      sprite.h = 64;
+      draw_sprite(sprite, vec3f_t{4, 4, 1}, 4);
     }
 
     // present the screen
