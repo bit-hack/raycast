@@ -397,6 +397,7 @@ void present(void) {
   }
 }
 
+// The asset files are currently loaded relative to the executable.
 #define DIR_ROOT "."
 
 bool load_textures() {
