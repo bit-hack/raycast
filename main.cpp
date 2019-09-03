@@ -1,4 +1,5 @@
 #define _SDL_main_h
+#include "SDL.h"
 
 #include <cmath>
 #include <string>
@@ -6,144 +7,36 @@
 #include <iostream>
 #include <array>
 
-#include "SDL.h"
+#include "common.h"
 #include "vector.h"
 #include "texture.h"
+#include "map.h"
 
 
 enum axis_t { axis_x, axis_y };
-
-
-std::array<texture_t, 16> texture;
 
 // player
 vec3f_t player_pos{22.f, 12.f, 0.f};
 vec3f_t player_acc{0.f, 0.f, 0.f};
 float player_dir = 0.f;
 float eyeLevel = 3.f;
-float nearPlaneDist = .66f;
+const float nearPlaneDist = .66f;
 
-
-struct map_t {
-  static const size_t mapWidth  = 24;
-  static const size_t mapHeight = 24;
-
-  std::array<uint8_t, mapWidth * mapHeight> height;
-  std::array<uint8_t, mapWidth * mapHeight> blockers;
-
-  enum {
-    block_left  = 1,
-    block_right = 2,
-    block_up    = 4,
-    block_down  = 8
-  };
-
-  void load(const uint8_t *data) {
-    memcpy(height.data(), data, height.size());
-    calcBlockers();
-  }
-
-  const uint8_t getHeight(int32_t x, int32_t y) const {
-    return height[x + y * mapWidth];
-  }
-
-  void resolve(const vec2f_t &p, const float r, vec2f_t &res) const {
-
-    // player height
-    const uint8_t ph = uint8_t(player_pos.z + 0.5f);
-
-    res = vec2f_t{ 99.f, 99.f };
-
-    const vec2i_t min{SDL_max(int32_t(p.x - r), 0),
-                      SDL_max(int32_t(p.y - r), 0)};
-    const vec2i_t max{SDL_min(int32_t(p.x + r), mapWidth -1),
-                      SDL_min(int32_t(p.y + r), mapHeight-1)};
-
-    bool setx = false, sety = false;
-
-    for (int32_t y = min.y; y <= max.y; ++y) {
-      for (int32_t x = min.x; x <= max.x; ++x) {
-
-        // test tile height
-        const uint8_t h = getHeight(x, y);
-        if (h <= ph + 1)
-          continue;
-
-        const uint8_t b = blockers[x + y * mapWidth];
-
-        const float dy0 = (b & block_up)    ? ((y + 0.f) - (p.y + r)) : 99.f;
-        const float dy1 = (b & block_down)  ? ((y + 1.f) - (p.y - r)) : 99.f;
-
-        const float dx0 = (b & block_left)  ? ((x + 0.f) - (p.x + r)) : 99.f;
-        const float dx1 = (b & block_right) ? ((x + 1.f) - (p.x - r)) : 99.f;
-
-        const float rx = fabsf(dx0) < fabsf(dx1) ? dx0 : dx1;
-        const float ry = fabsf(dy0) < fabsf(dy1) ? dy0 : dy1;
-
-        if (fabsf(rx) < fabsf(ry)) {
-          res.x = fabsf(rx) < fabsf(res.x) ? rx : res.x;
-          setx = res.x < 98.f;
-        }
-        else {
-          res.y = fabsf(ry) < fabsf(res.y) ? ry : res.y;
-          sety = res.y < 98.f;
-        }
-      }
-    }
-
-    res.x = setx ? res.x : 0.f;
-    res.y = sety ? res.y : 0.f;
-  }
-
-protected:
-  uint8_t getHeight_(int32_t x, int32_t y) const {
-    return (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight) ? 0xff : getHeight(x, y);
-  }
-
-  void calcBlockers(void) {
-    for (size_t y = 0; y < mapHeight; ++y) {
-      for (size_t x = 0; x < mapWidth; ++x) {
-        // if anything two tiles below us block in that direction
-        const uint8_t h = height[x + y * mapWidth];
-        uint8_t flags = 0;
-        flags |= (getHeight_(x, y - 1) + 2) <= h ? block_up    : 0;
-        flags |= (getHeight_(x, y + 1) + 2) <= h ? block_down  : 0;
-        flags |= (getHeight_(x - 1, y) + 2) <= h ? block_left  : 0;
-        flags |= (getHeight_(x + 1, y) + 2) <= h ? block_right : 0;
-        blockers[x + y * mapWidth] = flags;
-      }
-    }
-  }
-};
-
-map_t map;
-
-enum {
-  w = 320,
-  h = 240,
-};
 
 SDL_Surface *surf;
 std::array<uint32_t, w*h> screen;
+std::array<uint16_t, w*h> depth;
 
-static float fpart(float x) {
-  return x - float(int32_t(x));
-}
 
-static float ipart(float x) {
-  return float(int32_t(x));
-}
-
-static float project(float y, float dist) {
-  if (dist < 0.01f) {
-    return float(h);
-  }
-  else {
-    return (h / 2.f) - 64 * (y - eyeLevel) / dist;
-  }
-}
-
-static void draw_floor(int32_t x, float miny, float y0, float y1, const vec2f_t &p0, const vec2f_t &p1, const float dist) {
+static void draw_floor(
+  int32_t x,
+  float miny,
+  float y0,
+  float y1,
+  const vec2f_t &p0,
+  const vec2f_t &p1,
+  const float dist)
+{
   const int32_t drawStart = SDL_max(int32_t(SDL_min(miny, y0)), 0);
   const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), h - 1);
   if (drawStart >= drawEnd) {
@@ -170,6 +63,12 @@ static void draw_floor(int32_t x, float miny, float y0, float y1, const vec2f_t 
   uint32_t *p = screen.data();
   p += x;
   p += drawStart * w;
+
+  uint16_t *d = depth.data();
+  d += x;
+  d += drawStart * w;
+  const uint16_t dval = uint16_t(dist * 256.f);
+
   for (int32_t y = drawStart; y < drawEnd; ++y) {
 
     const uint32_t cx = uint32_t(f.x * tex_size) & tex_mask;
@@ -177,14 +76,24 @@ static void draw_floor(int32_t x, float miny, float y0, float y1, const vec2f_t 
     const uint32_t index =  (uint32_t(f.x * tex_size) & tex_mask) |
                            ((uint32_t(f.y * tex_size) & tex_mask) * tex_size);
     *p = tex[index];
+    *d = dval;
 
+    d += w;
     p += w;
     f = f + step;
   }
 }
 
-static void draw_wall(int32_t x, float miny, float y1, float y2, int32_t height,
-                      int32_t oldheight, axis_t axis, const vec2f_t &isect, const float dist) {
+static void draw_wall(
+  int32_t x,
+  float miny,
+  float y1,
+  float y2,
+  int32_t height,
+  int32_t oldheight,
+  axis_t axis,
+  const vec2f_t &isect,
+  const float dist) {
 
   const int32_t drawStart = SDL_max(int32_t(SDL_min(miny, y1)), 0);
   const int32_t drawEnd = SDL_min(int32_t(SDL_min(miny, y2)), h - 1);
@@ -211,9 +120,16 @@ static void draw_wall(int32_t x, float miny, float y1, float y2, int32_t height,
   p += x;
   p += drawStart * w;
 
+  uint16_t *d = depth.data();
+  d += x;
+  d += drawStart * w;
+  const uint16_t dval = uint16_t(dist * 256.f);
+
   for (int32_t y = drawStart; y < drawEnd; ++y) {
     *p = tex[ tex_size * (uint32_t(v * tex_size / 4) & tex_mask) ];
+    *d = dval;
     p += w;
+    d += w;
     v -= dy;
   }
 }
@@ -322,11 +238,12 @@ static void doMove(float moveSpeed, float rotSpeed) {
   const uint8_t *keys = SDL_GetKeyState(nullptr);
 
   const vec2f_t dir = { sinf(player_dir), cosf(player_dir) };
-  const int32_t pz = int32_t(player_pos.z + 1);
 
+  // integrate player position
   player_pos.x += player_acc.x;
   player_pos.y += player_acc.y;
 
+  // dampen
   player_acc.x *= 0.95f;
   player_acc.y *= 0.95f;
 
@@ -360,13 +277,13 @@ static void doMove(float moveSpeed, float rotSpeed) {
 
   // resolve player collisions
   {
-    const vec2f_t p = { player_pos.x, player_pos.y };
     vec2f_t res = { 0.f, 0.f };
-    map.resolve(p, 0.3f, res);
+    map.resolve(player_pos, 0.3f, res);
     player_pos.x += res.x * 0.5f;
     player_pos.y += res.y * 0.5f;
   }
 
+  // do gravity and floor collision checking
   const float fl = float(map.getHeight(int(player_pos.x), int(player_pos.y)));
   if (player_pos.z < fl) {
     player_pos.z = fl;
@@ -377,10 +294,12 @@ static void doMove(float moveSpeed, float rotSpeed) {
     player_pos.z += player_acc.z;
   }
 
+  // lerp the eye level so it doesn't pop
   eyeLevel += 0.1f * ((player_pos.z + 3.f) - eyeLevel);
 }
 
 void present(void) {
+#if 0
   const uint32_t *src = screen.data();
   uint32_t *dst = (uint32_t*)surf->pixels;
   const uint32_t pitch = surf->pitch / 4;
@@ -395,6 +314,22 @@ void present(void) {
     src += w;
     dst += pitch * 2;
   }
+#else
+  const uint16_t *src = depth.data();
+  uint32_t *dst = (uint32_t*)surf->pixels;
+  const uint32_t pitch = surf->pitch / 4;
+  for (uint32_t y = 0; y < h; ++y) {
+    for (uint32_t x = 0; x < w; ++x) {
+      const uint32_t rgb = (src[x] & 0xff00) * 8;
+      dst[x * 2 + 0] = rgb;
+      dst[x * 2 + 1] = rgb;
+      dst[x * 2 + 0 + pitch] = rgb;
+      dst[x * 2 + 1 + pitch] = rgb;
+    }
+    src += w;
+    dst += pitch * 2;
+  }
+#endif
 }
 
 // The asset files are currently loaded relative to the executable.

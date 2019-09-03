@@ -1,6 +1,8 @@
 #include "SDL.h"
 #include "texture.h"
 
+// list of current textures
+std::array<texture_t, 16> texture;
 
 // mip level offsets
 enum {
