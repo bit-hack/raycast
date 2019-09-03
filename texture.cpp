@@ -1,4 +1,6 @@
+#define _SDL_main_h
 #include "SDL.h"
+
 #include "texture.h"
 
 // list of current textures

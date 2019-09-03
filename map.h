@@ -3,8 +3,6 @@
 #include <array>
 #include <cstring>
 
-#include <SDL/SDL.h>
-
 #include "vector.h"
 
 

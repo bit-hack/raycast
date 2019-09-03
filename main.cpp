@@ -1,11 +1,11 @@
-#define _SDL_main_h
-#include "SDL.h"
-
 #include <cmath>
 #include <string>
 #include <vector>
 #include <iostream>
 #include <array>
+
+#define _SDL_main_h
+#include "SDL.h"
 
 #include "common.h"
 #include "vector.h"
@@ -19,11 +19,12 @@ enum axis_t { axis_x, axis_y };
 vec3f_t player_pos{22.f, 12.f, 0.f};
 vec3f_t player_acc{0.f, 0.f, 0.f};
 float player_dir = 0.f;
-float eyeLevel = 3.f;
-const float nearPlaneDist = .66f;
+float eye_level = 3.f;
+const float near_plane_scale = .66f;
 
 
-SDL_Surface *surf;
+static SDL_Surface *surf;
+
 std::array<uint32_t, w*h> screen;
 std::array<uint16_t, w*h> depth;
 
@@ -178,6 +179,8 @@ void raycast(
   axis_t axis = axis_x;
   while (true) {
 
+    const float old_dist = pdist;
+
     // step ray to next intersection
     if (len.x < len.y) {
       axis = axis_x;
@@ -208,7 +211,7 @@ void raycast(
     // draw floor tile
     {
       const float newy = project(oldHeight, pdist);
-      draw_floor(x, miny, newy, oldy, isect0, isect1, pdist);
+      draw_floor(x, miny, newy, oldy, isect0, isect1, old_dist);
       oldy = newy;
       miny = SDL_min(newy, miny);
     }
@@ -266,10 +269,10 @@ static void doMove(float moveSpeed, float rotSpeed) {
     player_dir -= rotSpeed;
   }
   if (keys[SDLK_q]) {
-    eyeLevel += 0.03f;
+    eye_level += 0.03f;
   }
   if (keys[SDLK_a]) {
-    eyeLevel -= 0.03f;
+    eye_level -= 0.03f;
   }
   if (keys[SDLK_ESCAPE]) {
     SDL_Quit();
@@ -295,11 +298,11 @@ static void doMove(float moveSpeed, float rotSpeed) {
   }
 
   // lerp the eye level so it doesn't pop
-  eyeLevel += 0.1f * ((player_pos.z + 3.f) - eyeLevel);
+  eye_level += 0.1f * ((player_pos.z + 3.f) - eye_level);
 }
 
 void present(void) {
-#if 0
+#if 1
   const uint32_t *src = screen.data();
   uint32_t *dst = (uint32_t*)surf->pixels;
   const uint32_t pitch = surf->pitch / 4;
@@ -320,7 +323,7 @@ void present(void) {
   const uint32_t pitch = surf->pitch / 4;
   for (uint32_t y = 0; y < h; ++y) {
     for (uint32_t x = 0; x < w; ++x) {
-      const uint32_t rgb = (src[x] & 0xff00) * 8;
+      const uint32_t rgb = (src[x] * 8) & 0xff00;
       dst[x * 2 + 0] = rgb;
       dst[x * 2 + 1] = rgb;
       dst[x * 2 + 0 + pitch] = rgb;
@@ -400,8 +403,8 @@ int main(int argc, char *args[])
 
     {
       const vec2f_t dir = {sinf(player_dir), cosf(player_dir)};
-      const float planeX = dir.y * nearPlaneDist;
-      const float planeY = -dir.x * nearPlaneDist;
+      const float planeX =  dir.y * near_plane_scale;
+      const float planeY = -dir.x * near_plane_scale;
 
       // for screen width
       for (int x = 0; x < w; x++) {
@@ -411,6 +414,15 @@ int main(int argc, char *args[])
         const float rayDirY = dir.y + planeY * cameraX;
         raycast(x, player_pos.x, player_pos.y, rayDirX, rayDirY);
       }
+    }
+
+    {
+      const vec2f_t p = project(vec3f_t{ 12, 12, 4 });
+      if (p.x >= 0 && p.y >= 0 && p.x < w && p.y < h) {
+        screen.data()[ int32_t(p.x) + int32_t(p.y) * w ] = 0xffffff;
+      }
+
+//      printf("%f, %f\n", p.x, p.y);
     }
 
     // present the screen

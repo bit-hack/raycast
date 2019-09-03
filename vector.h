@@ -11,7 +11,26 @@ struct vec2_t {
   void operator += (const vec2_t &a) {
     x += a.x; y += a.y;
   }
+
+  static type_t dot(const vec2_t &a, const vec2_t &b) {
+    return a.x * b.x + a.y * b.y;
+  }
 };
+
+template <typename type_t>
+vec2_t<type_t> operator - (const vec2_t<type_t> &a, const vec2_t<type_t> &b) {
+  return vec2_t<type_t>{a.x - b.x, a.y - b.y};
+}
+
+template <typename type_t>
+vec2_t<type_t> operator / (const vec2_t<type_t> &a, const type_t b) {
+  return vec2_t<type_t>{a.x / b, a.y / b};
+}
+
+template <typename type_t>
+vec2_t<type_t> operator * (const vec2_t<type_t> &a, const type_t b) {
+  return vec2_t<type_t>{a.x * b, a.y * b};
+}
 
 template <typename type_t>
 struct vec3_t {
@@ -23,6 +42,10 @@ struct vec3_t {
 
   void operator += (const vec3_t &a) {
     x += a.x; y += a.y; z += a.z;
+  }
+
+  static type_t dot(const vec3_t &a, const vec3_t &b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
   }
 };
 

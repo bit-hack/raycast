@@ -1,4 +1,5 @@
 #include <cmath>
+#include <algorithm>
 
 #include "map.h"
 
@@ -27,10 +28,10 @@ void map_t::resolve(const vec3f_t &p, const float r, vec2f_t &res) const {
 
   res = vec2f_t{ 99.f, 99.f };
 
-  const vec2i_t min{SDL_max(int32_t(p.x - r), 0),
-                    SDL_max(int32_t(p.y - r), 0)};
-  const vec2i_t max{SDL_min(int32_t(p.x + r), mapWidth -1),
-                    SDL_min(int32_t(p.y + r), mapHeight-1)};
+  const vec2i_t min{std::max<int32_t>(int32_t(p.x - r), 0),
+                    std::max<int32_t>(int32_t(p.y - r), 0)};
+  const vec2i_t max{std::min<int32_t>(int32_t(p.x + r), mapWidth -1),
+                    std::min<int32_t>(int32_t(p.y + r), mapHeight-1)};
 
   bool setx = false, sety = false;
 
