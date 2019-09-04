@@ -1,5 +1,47 @@
 #include "sprites.h"
 
+std::array<sprite_t, 16> sprites;
+
+bool sprite_t::load(const char *path) {
+
+  const uint32_t key = 0xff00ff;
+
+  SDL_Surface *bmp = SDL_LoadBMP(path);
+  if (!bmp) {
+    return false;
+  }
+
+  if (bmp->format->BitsPerPixel != 24) {
+    SDL_FreeSurface(bmp);
+    return false;
+  }
+
+  w = bmp->w;
+  h = bmp->h;
+  data.reset(new uint32_t[w * h]);
+
+  const uint8_t *src = (const uint8_t *)bmp->pixels;
+  uint32_t *dst = data.get();
+
+  for (uint32_t y = 0; y < h; ++y) {
+    for (uint32_t x = 0; x < w; ++x) {
+      const uint32_t r = src[x * 3 + 2];
+      const uint32_t g = src[x * 3 + 1];
+      const uint32_t b = src[x * 3 + 0];
+
+      const uint32_t rgb = (r << 16) | (g << 8) | b;
+
+      dst[x] = (rgb == key ? 0xff000000 : rgb);
+    }
+    src += bmp->pitch;
+    dst += w;
+  }
+
+  SDL_FreeSurface(bmp);
+
+  return true;
+}
+
 void draw_sprite(sprite_t &s, const vec3f_t &pos, const float height) {
   vec2f_t p;
   const float dist = project(pos, p);
@@ -20,17 +62,30 @@ void draw_sprite(sprite_t &s, const vec3f_t &pos, const float height) {
   const float x1 = p.x + dx / 2;
   const float x2 = p.x - dx / 2;
 
-  const vec2i_t min{std::max<int32_t>(0, x1), std::max<int32_t>(0, int32_t(y2))};
-  const vec2i_t max{std::min<int32_t>(w, x2), std::min<int32_t>(h, int32_t(y1))};
+  const vec2i_t min{std::max<int32_t>(0,        x1), std::max<int32_t>(0,        int32_t(y2))};
+  const vec2i_t max{std::min<int32_t>(screen_w, x2), std::min<int32_t>(screen_h, int32_t(y1))};
 
-  for (int32_t y = min.y; y < max.y; ++y) {
-    for (int32_t x = min.x; x < max.x; ++x) {
+  const float sx = float(s.w) / (max.x - min.x);
+  const float sy = float(s.h) / (max.y - min.y);
 
-      if (depth[x + y * w] < d) {
+  float tx = 0.f;
+  float ty = 0.f;
+
+  const uint32_t *src = s.data.get();
+
+  for (int32_t y = min.y; y < max.y; ++y, ty += sy) {
+    tx = 0.f;
+    for (int32_t x = min.x; x < max.x; ++x, tx += sx) {
+      // depth test
+      if (depth[x + y * screen_w] < d) {
         continue;
       }
-
-      screen[x + y * w] = 0xffffff;
+      // look up texel
+      const uint32_t rgb = src[ int32_t(tx) + int32_t(ty) * s.w ];
+      // alpha test
+      if ((rgb & 0xff000000) == 0) {
+        screen[x + y * screen_w] = rgb;
+      }
     }
   }
 }

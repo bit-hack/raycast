@@ -26,8 +26,8 @@ const float near_plane_scale = .66f;
 
 static SDL_Surface *surf;
 
-std::array<uint32_t, w*h> screen;
-std::array<uint16_t, w*h> depth;
+std::array<uint32_t, screen_w*screen_h> screen;
+std::array<uint16_t, screen_w*screen_h> depth;
 
 
 static void draw_floor(
@@ -40,7 +40,7 @@ static void draw_floor(
   const float dist)
 {
   const int32_t drawStart = SDL_max(int32_t(SDL_min(miny, y0)), 0);
-  const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), h - 1);
+  const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);
   if (drawStart >= drawEnd) {
     return;
   }
@@ -64,11 +64,11 @@ static void draw_floor(
 
   uint32_t *p = screen.data();
   p += x;
-  p += drawStart * w;
+  p += drawStart * screen_w;
 
   uint16_t *d = depth.data();
   d += x;
-  d += drawStart * w;
+  d += drawStart * screen_w;
   const uint16_t dval = uint16_t(dist * 256.f);
 
   for (int32_t y = drawStart; y < drawEnd; ++y) {
@@ -80,8 +80,8 @@ static void draw_floor(
     *p = tex[index];
     *d = dval;
 
-    d += w;
-    p += w;
+    d += screen_w;
+    p += screen_w;
     f = f + step;
   }
 }
@@ -98,7 +98,7 @@ static void draw_wall(
   const float dist) {
 
   const int32_t drawStart = SDL_max(int32_t(SDL_min(miny, y1)), 0);
-  const int32_t drawEnd = SDL_min(int32_t(SDL_min(miny, y2)), h - 1);
+  const int32_t drawEnd = SDL_min(int32_t(SDL_min(miny, y2)), screen_h - 1);
 
   uint32_t level = 0;
   level += (dist > 3.f ? 1 : 0);
@@ -120,18 +120,18 @@ static void draw_wall(
 
   uint32_t *p = screen.data();
   p += x;
-  p += drawStart * w;
+  p += drawStart * screen_w;
 
   uint16_t *d = depth.data();
   d += x;
-  d += drawStart * w;
+  d += drawStart * screen_w;
   const uint16_t dval = uint16_t(dist * 256.f);
 
   for (int32_t y = drawStart; y < drawEnd; ++y) {
     *p = tex[ tex_size * (uint32_t(v * tex_size / 4) & tex_mask) ];
     *d = dval;
-    p += w;
-    d += w;
+    p += screen_w;
+    d += screen_w;
     v -= dy;
   }
 }
@@ -170,8 +170,8 @@ void raycast(
   // perpendicular ray distance
   float pdist = 0.f;
 
-  float miny = h;
-  float oldy = h;
+  float miny = screen_h;
+  float oldy = screen_h;
   uint8_t oldHeight = map.getHeight(cell.x, cell.y);
 
   vec2f_t isect0 = {vx, vy};
@@ -305,30 +305,30 @@ void present(void) {
   const uint32_t *src = screen.data();
   uint32_t *dst = (uint32_t*)surf->pixels;
   const uint32_t pitch = surf->pitch / 4;
-  for (uint32_t y = 0; y < h; ++y) {
-    for (uint32_t x = 0; x < w; ++x) {
+  for (uint32_t y = 0; y < screen_h; ++y) {
+    for (uint32_t x = 0; x < screen_w; ++x) {
       const uint32_t rgb = src[x];
       dst[x * 2 + 0] = rgb;
       dst[x * 2 + 1] = rgb;
       dst[x * 2 + 0 + pitch] = rgb;
       dst[x * 2 + 1 + pitch] = rgb;
     }
-    src += w;
+    src += screen_w;
     dst += pitch * 2;
   }
 #else
   const uint16_t *src = depth.data();
   uint32_t *dst = (uint32_t*)surf->pixels;
   const uint32_t pitch = surf->pitch / 4;
-  for (uint32_t y = 0; y < h; ++y) {
-    for (uint32_t x = 0; x < w; ++x) {
+  for (uint32_t y = 0; y < screen_h; ++y) {
+    for (uint32_t x = 0; x < screen_w; ++x) {
       const uint32_t rgb = (src[x] * 8) & 0xff00;
       dst[x * 2 + 0] = rgb;
       dst[x * 2 + 1] = rgb;
       dst[x * 2 + 0 + pitch] = rgb;
       dst[x * 2 + 1 + pitch] = rgb;
     }
-    src += w;
+    src += screen_w;
     dst += pitch * 2;
   }
 #endif
@@ -340,6 +340,7 @@ void present(void) {
 bool load_textures() {
   texture[0].load(DIR_ROOT "/data/walls/boxy.bmp");
   texture[1].load(DIR_ROOT "/data/floors/hex.bmp");
+  sprites[0].load(DIR_ROOT "/data/things/test.bmp");
   return true;
 }
 
@@ -381,7 +382,7 @@ int main(int argc, char *args[])
   }
   map.load(worldMap.data());
 
-  surf = SDL_SetVideoMode(w * 2, h * 2, 32, 0);
+  surf = SDL_SetVideoMode(screen_w * 2, screen_h * 2, 32, 0);
 
   for(bool done = false; !done;)
   {
@@ -406,9 +407,9 @@ int main(int argc, char *args[])
       const float planeY = -dir.x * near_plane_scale;
 
       // for screen width
-      for (int x = 0; x < w; x++) {
+      for (int x = 0; x < screen_w; x++) {
         // calculate ray direction
-        const float cameraX = 2.f * x / float(w) - 1.f;
+        const float cameraX = 2.f * x / float(screen_w) - 1.f;
         const float rayDirX = dir.x + planeX * cameraX;
         const float rayDirY = dir.y + planeY * cameraX;
         raycast(x, player_pos.x, player_pos.y, rayDirX, rayDirY);
@@ -428,9 +429,9 @@ int main(int argc, char *args[])
       for (const auto &j : points) {
         dist = project(j, p);
         if (dist >= 0.f) {
-          if (p.x >= 0 && p.y >= 0 && p.x < w && p.y < h) {
+          if (p.x >= 0 && p.y >= 0 && p.x < screen_w && p.y < screen_h) {
 
-            const int32_t index = int32_t(p.x) + int32_t(p.y) * w;
+            const int32_t index = int32_t(p.x) + int32_t(p.y) * screen_w;
 
             if (depth[index] < 256 * dist) {
               screen[index] = 0xff0000;
@@ -441,10 +442,7 @@ int main(int argc, char *args[])
           }
         }
       }
-      sprite_t sprite;
-      sprite.w = 32;
-      sprite.h = 64;
-      draw_sprite(sprite, vec3f_t{4, 4, 1}, 4);
+      draw_sprite(sprites[0], vec3f_t{4, 4, 0}, 4);
     }
 
     // present the screen

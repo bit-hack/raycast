@@ -18,10 +18,10 @@ extern float eye_level;
 extern const float near_plane_scale;
 
 // screen width and height
-enum { w = 320, h = 240 };
+enum { screen_w = 320, screen_h = 240 };
 
-extern std::array<uint32_t, w*h> screen;
-extern std::array<uint16_t, w*h> depth;
+extern std::array<uint32_t, screen_w*screen_h> screen;
+extern std::array<uint16_t, screen_w*screen_h> depth;
 
 
 namespace {
@@ -36,10 +36,10 @@ inline float ipart(float x) {
 
 inline float project(float y, float dist) {
   if (dist < 0.01f) {
-    return float(h);
+    return float(screen_h);
   }
   else {
-    return (h / 2.f) - 64 * (y - eye_level) / dist;
+    return (screen_h / 2.f) - 64 * (y - eye_level) / dist;
   }
 }
 
@@ -58,8 +58,8 @@ inline float project(const vec3f_t &p, vec2f_t &out) {
   // XXX: no idea why I need the fudge yet
   const float fudge = 1.1f;
 
-  const float x = w / 2 + w * side * near_plane_scale * fudge;
-  const float y = (h / 2.f) - 64 * (p.z - eye_level) / dist;
+  const float x = screen_w / 2 + screen_w * side * near_plane_scale * fudge;
+  const float y = (screen_h / 2.f) - 64 * (p.z - eye_level) / dist;
 
   out = vec2f_t{x, y};
   return dist;

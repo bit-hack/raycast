@@ -5,9 +5,14 @@
 
 
 struct sprite_t {
+
+  bool load(const char *path);
+
   uint32_t w, h;
-  std::unique_ptr<uint32_t> data;
+  std::unique_ptr<uint32_t[]> data;
 };
+
+extern std::array<sprite_t, 16> sprites;
 
 void draw_sprite(
   sprite_t &s,          // sprite
