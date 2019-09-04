@@ -267,12 +267,6 @@ static void doMove(float moveSpeed, float rotSpeed) {
   if (keys[SDLK_LEFT]) {
     player_dir -= rotSpeed;
   }
-  if (keys[SDLK_q]) {
-    eye_level += 0.03f;
-  }
-  if (keys[SDLK_a]) {
-    eye_level -= 0.03f;
-  }
   if (keys[SDLK_ESCAPE]) {
     SDL_Quit();
   }

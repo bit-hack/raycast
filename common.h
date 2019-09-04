@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 #include <array>
 
 #define _SDL_main_h
