@@ -40,7 +40,7 @@ static void draw_floor(
   const vec2f_t &p1,
   const float dist)
 {
-  const int32_t drawStart = SDL_max(int32_t(y0), 0);
+  const int32_t drawStart = SDL_max(int32_t(y0), maxy);
   const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);
   if (drawStart >= drawEnd) {
     return;
