@@ -53,28 +53,30 @@ void draw_sprite(sprite_t &s, const vec3f_t &pos, const float height) {
   // sprite depth
   const uint16_t d = uint16_t(dist * 256);
 
-  const float y1 = p.y;
-  const float y2 = project(pos.z + height, dist);
-  const float dy = y2 - y1;
+  const float y2 = p.y;
+  const float y1 = project(pos.z + height, dist);
+  const float dy = y1 - y2;
 
   const float dx = (dy * s.w) / s.h;
 
-  const float x1 = p.x + dx / 2;
-  const float x2 = p.x - dx / 2;
+  const vec2f_t box_min{p.x + dx / 2, y1};
+  const vec2f_t box_max{p.x - dx / 2, y2};
 
-  const vec2i_t min{std::max<int32_t>(0,        x1), std::max<int32_t>(0,        int32_t(y2))};
-  const vec2i_t max{std::min<int32_t>(screen_w, x2), std::min<int32_t>(screen_h, int32_t(y1))};
+  const vec2i_t min{std::max<int32_t>(0,        int32_t(box_min.x)),
+                    std::max<int32_t>(0,        int32_t(box_min.y))};
+  const vec2i_t max{std::min<int32_t>(screen_w, int32_t(box_max.x)),
+                    std::min<int32_t>(screen_h, int32_t(box_max.y))};
 
-  const float sx = float(s.w) / (max.x - min.x);
-  const float sy = float(s.h) / (max.y - min.y);
+  const float sx = float(s.w) / (box_max.x - box_min.x);
+  const float sy = float(s.h) / (box_max.y - box_min.y);
 
-  float tx = 0.f;
-  float ty = 0.f;
+  float tx = (box_min.x < 0) ? sx * -box_min.x : 0.f;
+  float ty = (box_min.y < 0) ? sy * -box_min.y : 0.f;
 
   const uint32_t *src = s.data.get();
 
   for (int32_t y = min.y; y < max.y; ++y, ty += sy) {
-    tx = 0.f;
+    tx = (box_min.x < 0) ? sx * -box_min.x : 0.f;
     for (int32_t x = min.x; x < max.x; ++x, tx += sx) {
       // depth test
       if (depth[x + y * screen_w] < d) {
