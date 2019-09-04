@@ -3,16 +3,44 @@
 
 enum axis_t { axis_x, axis_y };
 
+
+static void draw_ceil(
+  int32_t x,
+  float miny,
+  float maxy,
+  float y0,
+  float y1,
+  const vec2f_t &p0,
+  const vec2f_t &p1,
+  const float dist) {
+
+  const int32_t drawStart = SDL_max(int32_t(y0), maxy);
+  const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);
+  if (drawStart >= drawEnd) {
+    return;
+  }
+
+  uint32_t *p = screen.data();
+  p += x;
+  p += drawStart * screen_w;
+
+  for (int32_t y = drawStart; y < drawEnd; ++y) {
+    *p = 0x00ff00;
+    p += screen_w;
+  }
+}
+
 static void draw_floor(
   int32_t x,
   float miny,
+  float maxy,
   float y0,
   float y1,
   const vec2f_t &p0,
   const vec2f_t &p1,
   const float dist)
 {
-  const int32_t drawStart = SDL_max(int32_t(SDL_min(miny, y0)), 0);
+  const int32_t drawStart = SDL_max(int32_t(y0), 0);
   const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);
   if (drawStart >= drawEnd) {
     return;
@@ -59,9 +87,35 @@ static void draw_floor(
   }
 }
 
-static void draw_wall(
+static void draw_step_down(
   int32_t x,
   float miny,
+  float maxy,
+  float y1,
+  float y2,
+  int32_t ceil,
+  int32_t oldCeil,
+  axis_t axis,
+  const vec2f_t &isect,
+  const float dist) {
+
+  const int32_t drawStart = SDL_max(int32_t(SDL_max(maxy, y1)), 0);
+  const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y2)), screen_h - 1);
+
+  uint32_t *p = screen.data();
+  p += x;
+  p += drawStart * screen_w;
+
+  for (int32_t y = drawStart; y < drawEnd; ++y) {
+    *p = 0xff0000;
+    p += screen_w;
+  }
+}
+
+static void draw_step_up(
+  int32_t x,
+  float miny,
+  float maxy,
   float y1,
   float y2,
   int32_t height,
@@ -70,14 +124,14 @@ static void draw_wall(
   const vec2f_t &isect,
   const float dist) {
 
-  const int32_t drawStart = SDL_max(int32_t(SDL_min(miny, y1)), 0);
-  const int32_t drawEnd = SDL_min(int32_t(SDL_min(miny, y2)), screen_h - 1);
+  const int32_t drawStart = SDL_max(int32_t(SDL_max(maxy, y1)), 0);
+  const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y2)), screen_h - 1);
 
   uint32_t level = 0;
-  level += (dist > 3.f ? 1 : 0);
-  level += (dist > 6.f ? 1 : 0);
-  level += (dist > 10.f ? 1 : 0);
-  level += (dist > 18.f ? 1 : 0);
+  level += (dist > 4.f ? 1 : 0);
+  level += (dist > 7.f ? 1 : 0);
+  level += (dist > 13.f ? 1 : 0);
+  level += (dist > 20.f ? 1 : 0);
 
   uint32_t tex_mask = 0x3f >> level;
   uint32_t tex_size = 64   >> level;
@@ -88,7 +142,7 @@ static void draw_wall(
   const uint32_t u = uint32_t(((axis == axis_x) ? isect.y : isect.x) * tex_size);
 
   // adjust if top of wall might extend above screen
-  float v = -dy * (y1 < 0.f ? fabsf(y1) : 0.f);
+  float v = (drawStart > y1) ? -(dy * (drawStart - y1)) : 0;
   tex += u & tex_mask;
 
   uint32_t *p = screen.data();
@@ -144,8 +198,12 @@ void raycast(
   float pdist = 0.f;
 
   float miny = screen_h;
-  float oldy = screen_h;
-  uint8_t oldHeight = map.getHeight(cell.x, cell.y);
+  float oldminy = screen_h;
+  uint8_t oldFloor = map.getHeight(cell.x, cell.y);
+
+  float maxy = 0;
+  float oldmaxy = 0;
+  uint8_t oldCeil = map.getCeil(cell.x, cell.y);
 
   vec2f_t isect0 = {vx, vy};
   vec2f_t isect1;
@@ -177,34 +235,57 @@ void raycast(
       pdist = ((cell.y - vy) + (step.y < 0 ? 1 : 0)) / ry;
     }
 
-    // current floor height
-    const uint8_t height = map.getHeight(cell.x, cell.y);
+    // current floor/ceiling height
+    const uint8_t floor = map.getHeight(cell.x, cell.y);
+    const uint8_t ceil = map.getCeil(cell.x, cell.y);
 
     // draw floor tile
     {
-      const float newy = project(oldHeight, pdist);
-      draw_floor(x, miny, newy, oldy, isect0, isect1, pdist);
-      oldy = newy;
-      miny = SDL_min(newy, miny);
+      const float y = project(oldFloor, pdist);
+      draw_floor(x, miny, maxy, y, oldminy, isect0, isect1, pdist);
+      oldminy = y;
+      miny = SDL_min(y, miny);
     }
 
-    // draw wall
-    if (height > oldHeight) {
-      const float y0 = project(height, pdist);
-      const float y1 = project(oldHeight, pdist);
-      draw_wall(x, miny, y0, y1, height, oldHeight, axis, isect1, pdist);
-      oldy = y0;
+    // draw ceiling tile
+    {
+      const float y = project(oldCeil, pdist, 0.f);
+      draw_ceil(x, miny, maxy, oldmaxy, y, isect0, isect1, pdist);
+      oldmaxy = y;
+      maxy = SDL_max(y, maxy);
+    }
+
+    // draw step down
+    if (ceil < oldCeil) {
+      const float y0 = project(oldCeil, pdist, 0.f);
+      const float y1 = project(ceil, pdist, 0.f);
+      draw_step_down(x, miny, maxy, y0, y1, oldCeil, ceil, axis, isect1, pdist);
+      oldmaxy = y1;
+      maxy = SDL_max(y1, maxy);
+    }
+
+    // draw step up
+    if (floor > oldFloor) {
+      const float y0 = project(floor, pdist);
+      const float y1 = project(oldFloor, pdist);
+      draw_step_up(x, miny, maxy, y0, y1, floor, oldFloor, axis, isect1, pdist);
+      oldminy = y0;
       miny = SDL_min(y0, miny);
     }
 
-    oldHeight = height;
+    oldFloor = floor;
+    oldCeil = ceil;
 
     // check map tile for collision
-    if (height >= 9) {
+    if (floor >= 9) {
       break;
     }
 
     // swap intersection points
     isect0 = isect1;
   }
+
+//  for (int y = 0; y < SDL_min(maxy, screen_h-1); ++y) {
+//    screen[x + y * screen_w] = 0xff0000;
+//  }
 }

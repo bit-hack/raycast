@@ -35,9 +35,9 @@ inline float ipart(float x) {
   return float(int32_t(x));
 }
 
-inline float project(float y, float dist) {
+inline float project(float y, float dist, float def = screen_h) {
   if (dist < 0.01f) {
-    return float(screen_h);
+    return def;
   }
   else {
     return (screen_h / 2.f) - 64 * (y - eye_level) / dist;

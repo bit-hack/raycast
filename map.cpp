@@ -10,7 +10,7 @@ void map_t::calcBlockers(void) {
   for (size_t y = 0; y < mapHeight; ++y) {
     for (size_t x = 0; x < mapWidth; ++x) {
       // if anything two tiles below us block in that direction
-      const uint8_t h = height[x + y * mapWidth];
+      const uint8_t h = floor[x + y * mapWidth];
       uint8_t flags = 0;
       flags |= (getHeight_(x, y - 1) + 2) <= h ? block_up    : 0;
       flags |= (getHeight_(x, y + 1) + 2) <= h ? block_down  : 0;
