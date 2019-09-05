@@ -20,13 +20,43 @@ static void draw_ceil(
     return;
   }
 
+  uint32_t level = 0;
+  level += (dist > 3.f ? 1 : 0);
+  level += (dist > 5.f ? 1 : 0);
+  level += (dist > 8.f ? 1 : 0);
+  level += (dist > 16.f ? 1 : 0);
+
+  uint32_t tex_mask = 0x3f >> level;
+  uint32_t tex_size = 64 >> level;
+  const uint32_t *tex = texture[1].getTexture(level);
+
+  const float dy = y1 - y0;
+  const vec2f_t step{(p0.x - p1.x) / dy,
+                     (p0.y - p1.y) / dy};
+
+  vec2f_t f = p1 + ((drawStart > y0) ? step * (drawStart-y0) : vec2f_t{0, 0});
+
   uint32_t *p = screen.data();
   p += x;
   p += drawStart * screen_w;
 
+  uint16_t *d = depth.data();
+  d += x;
+  d += drawStart * screen_w;
+  const uint16_t dval = uint16_t(dist * 256.f);
+
   for (int32_t y = drawStart; y < drawEnd; ++y) {
-    *p = 0x00ff00;
+
+    const uint32_t cx = uint32_t(f.x * tex_size) & tex_mask;
+    const uint32_t cy = uint32_t(f.y * tex_size) & tex_mask;
+    const uint32_t index =  (uint32_t(f.x * tex_size) & tex_mask) |
+                           ((uint32_t(f.y * tex_size) & tex_mask) * tex_size);
+    *p = tex[index];
+    *d = dval;
+
+    d += screen_w;
     p += screen_w;
+    f = f + step;
   }
 }
 
@@ -41,7 +71,7 @@ static void draw_floor(
   const float dist)
 {
   const int32_t drawStart = SDL_max(int32_t(y0), maxy);
-  const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);
+  const int32_t drawEnd = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);
   if (drawStart >= drawEnd) {
     return;
   }
@@ -76,7 +106,7 @@ static void draw_floor(
 
     const uint32_t cx = uint32_t(f.x * tex_size) & tex_mask;
     const uint32_t cy = uint32_t(f.y * tex_size) & tex_mask;
-    const uint32_t index =  (uint32_t(f.x * tex_size) & tex_mask) |
+    const uint32_t index = (uint32_t(f.x * tex_size) & tex_mask) |
                            ((uint32_t(f.y * tex_size) & tex_mask) * tex_size);
     *p = tex[index];
     *d = dval;
@@ -97,18 +127,45 @@ static void draw_step_down(
   int32_t oldCeil,
   axis_t axis,
   const vec2f_t &isect,
-  const float dist) {
-
+  const float dist)
+{
   const int32_t drawStart = SDL_max(int32_t(SDL_max(maxy, y1)), 0);
-  const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y2)), screen_h - 1);
+  const int32_t drawEnd = SDL_min(int32_t(SDL_min(miny, y2)), screen_h - 1);
+
+  uint32_t level = 0;
+  level += (dist > 4.f ? 1 : 0);
+  level += (dist > 7.f ? 1 : 0);
+  level += (dist > 13.f ? 1 : 0);
+  level += (dist > 20.f ? 1 : 0);
+
+  uint32_t tex_mask = 0x3f >> level;
+  uint32_t tex_size = 64 >> level;
+  const uint32_t *tex = texture[0].getTexture(level);
+
+  const float dy = float(ceil - oldCeil) / (y1 - y2);
+
+  const uint32_t u =
+      uint32_t(((axis == axis_x) ? isect.y : isect.x) * tex_size);
+
+  // adjust if top of wall might extend above screen
+  float v = (drawStart > y1) ? -(dy * (drawStart - y1)) : 0;
+  tex += u & tex_mask;
 
   uint32_t *p = screen.data();
   p += x;
   p += drawStart * screen_w;
 
+  uint16_t *d = depth.data();
+  d += x;
+  d += drawStart * screen_w;
+  const uint16_t dval = uint16_t(dist * 256.f);
+
   for (int32_t y = drawStart; y < drawEnd; ++y) {
-    *p = 0xff0000;
+    *p = tex[tex_size * (uint32_t(v * tex_size / 4) & tex_mask)];
+    *d = dval;
     p += screen_w;
+    d += screen_w;
+    v -= dy;
   }
 }
 
@@ -125,7 +182,7 @@ static void draw_step_up(
   const float dist) {
 
   const int32_t drawStart = SDL_max(int32_t(SDL_max(maxy, y1)), 0);
-  const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y2)), screen_h - 1);
+  const int32_t drawEnd = SDL_min(int32_t(SDL_min(miny, y2)), screen_h - 1);
 
   uint32_t level = 0;
   level += (dist > 4.f ? 1 : 0);
@@ -134,12 +191,13 @@ static void draw_step_up(
   level += (dist > 20.f ? 1 : 0);
 
   uint32_t tex_mask = 0x3f >> level;
-  uint32_t tex_size = 64   >> level;
+  uint32_t tex_size = 64 >> level;
   const uint32_t *tex = texture[0].getTexture(level);
 
   const float dy = float(height - oldheight) / (y1 - y2);
 
-  const uint32_t u = uint32_t(((axis == axis_x) ? isect.y : isect.x) * tex_size);
+  const uint32_t u =
+      uint32_t(((axis == axis_x) ? isect.y : isect.x) * tex_size);
 
   // adjust if top of wall might extend above screen
   float v = (drawStart > y1) ? -(dy * (drawStart - y1)) : 0;
@@ -155,7 +213,7 @@ static void draw_step_up(
   const uint16_t dval = uint16_t(dist * 256.f);
 
   for (int32_t y = drawStart; y < drawEnd; ++y) {
-    *p = tex[ tex_size * (uint32_t(v * tex_size / 4) & tex_mask) ];
+    *p = tex[tex_size * (uint32_t(v * tex_size / 4) & tex_mask)];
     *d = dval;
     p += screen_w;
     d += screen_w;
@@ -284,8 +342,4 @@ void raycast(
     // swap intersection points
     isect0 = isect1;
   }
-
-//  for (int y = 0; y < SDL_min(maxy, screen_h-1); ++y) {
-//    screen[x + y * screen_w] = 0xff0000;
-//  }
 }
