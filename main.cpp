@@ -88,7 +88,7 @@ static void doMove(float moveSpeed, float rotSpeed) {
 }
 
 void present(void) {
-#if 1
+#if 0
   const uint32_t *src = screen.data();
   uint32_t *dst = (uint32_t*)surf->pixels;
   const uint32_t pitch = surf->pitch / 4;
@@ -127,6 +127,7 @@ void present(void) {
 bool load_textures() {
   texture[0].load(DIR_ROOT "/data/walls/boxy.bmp");
   texture[1].load(DIR_ROOT "/data/floors/hex.bmp");
+  texture[2].load(DIR_ROOT "/data/ceil/stone.bmp");
   sprites[0].load(DIR_ROOT "/data/things/test.bmp");
   return true;
 }
@@ -169,8 +170,8 @@ const std::array<uint8_t, map_t::mapWidth * map_t::mapHeight> map_ceil = {
   9,9,9,9,9,9,7,9,9,9,9,9,9,9,9,9,9,7,9,9,9,9,9,9,
   9,9,9,9,9,9,7,9,9,9,9,9,9,9,9,9,9,7,9,9,9,9,9,9,
   9,9,9,9,9,9,7,9,9,9,9,9,9,9,9,9,9,7,9,9,9,9,9,9,
-  9,9,9,9,9,9,7,9,9,9,9,4,4,9,9,9,9,7,9,9,9,9,9,9,
-  9,9,9,9,9,9,7,9,9,9,9,4,4,9,9,9,9,7,9,9,9,9,9,9,
+  9,9,9,9,9,9,7,9,9,9,9,5,5,9,9,9,9,7,9,9,9,9,9,9,
+  9,9,9,9,9,9,7,9,9,9,9,5,5,9,9,9,9,7,9,9,9,9,9,9,
   9,9,9,9,9,9,7,9,9,9,9,9,9,9,9,9,9,7,9,9,9,9,9,9,
   9,9,9,9,9,9,7,9,9,9,9,9,9,9,9,9,9,7,9,9,9,9,9,9,
   9,9,9,9,9,9,7,9,9,9,9,9,9,9,9,9,9,7,9,9,9,9,9,9,
@@ -178,7 +179,7 @@ const std::array<uint8_t, map_t::mapWidth * map_t::mapHeight> map_ceil = {
   9,9,9,9,9,9,7,9,9,9,9,9,9,9,9,9,9,7,9,9,9,9,9,9,
   9,9,9,9,9,9,7,9,9,9,9,9,9,9,9,9,9,7,9,9,9,9,9,9,
   9,9,9,9,9,9,7,9,9,9,9,9,9,9,9,9,9,7,9,9,9,9,9,9,
-  9,9,9,9,9,9,7,9,9,9,9,9,9,9,9,9,9,7,9,9,9,9,9,9,
+  9,9,9,9,9,9,7,7,7,7,7,7,7,7,7,7,7,7,9,9,9,9,9,9,
   9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,
   9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,
   9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,
@@ -196,7 +197,7 @@ int main(int argc, char *args[])
   }
   map.load(map_floor.data(), map_ceil.data());
 
-  surf = SDL_SetVideoMode(screen_w * 2, screen_h * 2, 32, 0);
+  surf = SDL_SetVideoMode(screen_w * 2, screen_h * 2, 32, SDL_FULLSCREEN);
 
   for(bool done = false; !done;)
   {

@@ -22,20 +22,18 @@ static void draw_ceil(
   }
 
   uint32_t level = 0;
-  level += (d1 > 3.f ? 1 : 0);
-  level += (d1 > 5.f ? 1 : 0);
-  level += (d1 > 8.f ? 1 : 0);
+  level += (d1 >  3.f ? 1 : 0);
+  level += (d1 >  5.f ? 1 : 0);
+  level += (d1 >  8.f ? 1 : 0);
   level += (d1 > 16.f ? 1 : 0);
 
   uint32_t tex_mask = 0x3f >> level;
   uint32_t tex_size = 64 >> level;
-  const uint32_t *tex = texture[1].getTexture(level);
+  const uint32_t *tex = texture[2].getTexture(level);
+
+  // note: work from p1 -> p0 because we render downwards
 
   const float dy = y1 - y0;
-  const vec2f_t step{(p0.x - p1.x) / dy,
-                     (p0.y - p1.y) / dy};
-
-  vec2f_t f = p1 + ((drawStart > y0) ? step * (drawStart-y0) : vec2f_t{0, 0});
 
   uint32_t *p = screen.data();
   p += x;
@@ -44,20 +42,42 @@ static void draw_ceil(
   uint16_t *d = depth.data();
   d += x;
   d += drawStart * screen_w;
-  const uint16_t dval = uint16_t(d0 * 256.f);
+  const uint16_t dval = uint16_t(d1 * 256.f);
+
+  const float w0 = 1.f / d0;
+  const float w1 = 1.f / d1;
+  const float dw = (w1 - w0) / dy;
+
+  const float u0 = p0.x / d0;
+  const float u1 = p1.x / d1;
+  const float du = (u1 - u0) / dy;
+
+  const float v0 = p0.y / d0;
+  const float v1 = p1.y / d1;
+  const float dv = (v1 - v0) / dy;
+
+  const float nudge = drawStart > y0 ? drawStart - y0 : 0;
+
+  float u = u0 + du * nudge;
+  float v = v0 + dv * nudge;
+  float w = w0 + dw * nudge;
 
   for (int32_t y = drawStart; y < drawEnd; ++y) {
 
-    const uint32_t cx = uint32_t(f.x * tex_size) & tex_mask;
-    const uint32_t cy = uint32_t(f.y * tex_size) & tex_mask;
-    const uint32_t index =  (uint32_t(f.x * tex_size) & tex_mask) |
-                           ((uint32_t(f.y * tex_size) & tex_mask) * tex_size);
+    const float pu = u / w;
+    const float pv = v / w;
+
+    const uint32_t index =  (uint32_t(pu * tex_size) & tex_mask) |
+                           ((uint32_t(pv * tex_size) & tex_mask) * tex_size);
+    u += du;
+    v += dv;
+    w += dw;
+
     *p = tex[index];
-    *d = dval;
+    *d = 256.f / w;
 
     d += screen_w;
     p += screen_w;
-    f = f + step;
   }
 }
 
@@ -129,7 +149,7 @@ static void draw_floor(
     w += dw;
 
     *p = tex[index];
-    *d = dval;
+    *d = 256.f / w;
 
     d += screen_w;
     p += screen_w;

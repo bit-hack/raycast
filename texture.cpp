@@ -46,9 +46,9 @@ bool texture_t::load(const char *path) {
 
   for (uint32_t y = 0; y < 64; ++y) {
     for (uint32_t x = 0; x < 64; ++x) {
-      const uint32_t r = src[x * 3 + 0];
+      const uint32_t r = src[x * 3 + 2];
       const uint32_t g = src[x * 3 + 1];
-      const uint32_t b = src[x * 3 + 2];
+      const uint32_t b = src[x * 3 + 0];
       dst[x] = (r << 16) | (g << 8) | b;
     }
     src += 64 * 3;

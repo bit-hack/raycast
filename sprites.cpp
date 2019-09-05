@@ -87,6 +87,7 @@ void draw_sprite(sprite_t &s, const vec3f_t &pos, const float height) {
       // alpha test
       if ((rgb & 0xff000000) == 0) {
         screen[x + y * screen_w] = rgb;
+        depth[x + y * screen_w] = d;
       }
     }
   }
