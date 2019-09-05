@@ -9,6 +9,9 @@ map_t map;
 void map_t::calcBlockers(void) {
   for (size_t y = 0; y < mapHeight; ++y) {
     for (size_t x = 0; x < mapWidth; ++x) {
+
+      // XXX: check ceiling height
+
       // if anything two tiles below us block in that direction
       const uint8_t h = floor[x + y * mapWidth];
       uint8_t flags = 0;

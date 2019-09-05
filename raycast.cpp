@@ -12,7 +12,8 @@ static void draw_ceil(
   float y1,
   const vec2f_t &p0,
   const vec2f_t &p1,
-  const float dist) {
+  const float d0,
+  const float d1) {
 
   const int32_t drawStart = SDL_max(int32_t(y0), maxy);
   const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);
@@ -21,10 +22,10 @@ static void draw_ceil(
   }
 
   uint32_t level = 0;
-  level += (dist > 3.f ? 1 : 0);
-  level += (dist > 5.f ? 1 : 0);
-  level += (dist > 8.f ? 1 : 0);
-  level += (dist > 16.f ? 1 : 0);
+  level += (d1 > 3.f ? 1 : 0);
+  level += (d1 > 5.f ? 1 : 0);
+  level += (d1 > 8.f ? 1 : 0);
+  level += (d1 > 16.f ? 1 : 0);
 
   uint32_t tex_mask = 0x3f >> level;
   uint32_t tex_size = 64 >> level;
@@ -43,7 +44,7 @@ static void draw_ceil(
   uint16_t *d = depth.data();
   d += x;
   d += drawStart * screen_w;
-  const uint16_t dval = uint16_t(dist * 256.f);
+  const uint16_t dval = uint16_t(d0 * 256.f);
 
   for (int32_t y = drawStart; y < drawEnd; ++y) {
 
@@ -68,30 +69,28 @@ static void draw_floor(
   float y1,
   const vec2f_t &p0,
   const vec2f_t &p1,
-  const float dist)
+  const float d0,
+  const float d1)
 {
   const int32_t drawStart = SDL_max(int32_t(y0), maxy);
-  const int32_t drawEnd = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);
+  const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);
   if (drawStart >= drawEnd) {
     return;
   }
 
-  // XXX: find p0.5 midpoint and project this to generate y0.5 a curve
-
   uint32_t level = 0;
-  level += (dist > 3.f ? 1 : 0);
-  level += (dist > 5.f ? 1 : 0);
-  level += (dist > 8.f ? 1 : 0);
-  level += (dist > 16.f ? 1 : 0);
+  level += (d1 >  3.f ? 1 : 0);
+  level += (d1 >  5.f ? 1 : 0);
+  level += (d1 >  8.f ? 1 : 0);
+  level += (d1 > 16.f ? 1 : 0);
 
   uint32_t tex_mask = 0x3f >> level;
   uint32_t tex_size = 64 >> level;
   const uint32_t *tex = texture[1].getTexture(level);
 
-  const float dy = y1 - y0;
-  const vec2f_t step{(p0.x - p1.x) / dy, (p0.y - p1.y) / dy};
+  // note: work from p1 -> p0 because we render downwards
 
-  vec2f_t f = p1;
+  const float dy = y1 - y0;
 
   uint32_t *p = screen.data();
   p += x;
@@ -100,20 +99,40 @@ static void draw_floor(
   uint16_t *d = depth.data();
   d += x;
   d += drawStart * screen_w;
-  const uint16_t dval = uint16_t(dist * 256.f);
+  const uint16_t dval = uint16_t(d1 * 256.f);
+
+  const float w0 = 1.f / d0;
+  const float w1 = 1.f / d1;
+  const float dw = (w0 - w1) / dy;
+
+  const float u0 = p0.x / d0;
+  const float u1 = p1.x / d1;
+  const float du = (u0 - u1) / dy;
+
+  const float v0 = p0.y / d0;
+  const float v1 = p1.y / d1;
+  const float dv = (v0 - v1) / dy;
+
+  float u = u1;
+  float v = v1;
+  float w = w1;
 
   for (int32_t y = drawStart; y < drawEnd; ++y) {
 
-    const uint32_t cx = uint32_t(f.x * tex_size) & tex_mask;
-    const uint32_t cy = uint32_t(f.y * tex_size) & tex_mask;
-    const uint32_t index = (uint32_t(f.x * tex_size) & tex_mask) |
-                           ((uint32_t(f.y * tex_size) & tex_mask) * tex_size);
+    const float pu = u / w;
+    const float pv = v / w;
+
+    const uint32_t index =  (uint32_t(pu * tex_size) & tex_mask) |
+                           ((uint32_t(pv * tex_size) & tex_mask) * tex_size);
+    u += du;
+    v += dv;
+    w += dw;
+
     *p = tex[index];
     *d = dval;
 
     d += screen_w;
     p += screen_w;
-    f = f + step;
   }
 }
 
@@ -253,7 +272,7 @@ void raycast(
   py.x = vx + (py.y - vy) * (rx / ry);
 
   // perpendicular ray distance
-  float pdist = 0.f;
+  float dist = 0.f;
 
   float miny = screen_h;
   float oldminy = screen_h;
@@ -269,6 +288,8 @@ void raycast(
   axis_t axis = axis_x;
   while (true) {
 
+    const float old_dist = dist;
+
     // step ray to next intersection
     if (len.x < len.y) {
       axis = axis_x;
@@ -279,7 +300,7 @@ void raycast(
       px += vec2f_t { float(step.x), dd.y };
       isect1 = px;
       // calculate perp distance
-      pdist = ((cell.x - vx) + (step.x < 0 ? 1 : 0)) / rx;
+      dist = ((cell.x - vx) + (step.x < 0 ? 1 : 0)) / rx;
 
     } else {
       axis = axis_y;
@@ -290,7 +311,7 @@ void raycast(
       py += vec2f_t { dd.x, float(step.y) };
       isect1 = py;
       // calculate perp distance
-      pdist = ((cell.y - vy) + (step.y < 0 ? 1 : 0)) / ry;
+      dist = ((cell.y - vy) + (step.y < 0 ? 1 : 0)) / ry;
     }
 
     // current floor/ceiling height
@@ -299,34 +320,34 @@ void raycast(
 
     // draw floor tile
     {
-      const float y = project(oldFloor, pdist);
-      draw_floor(x, miny, maxy, y, oldminy, isect0, isect1, pdist);
+      const float y = project(oldFloor, dist);
+      draw_floor(x, miny, maxy, y, oldminy, isect0, isect1, old_dist, dist);
       oldminy = y;
       miny = SDL_min(y, miny);
     }
 
     // draw ceiling tile
     {
-      const float y = project(oldCeil, pdist, 0.f);
-      draw_ceil(x, miny, maxy, oldmaxy, y, isect0, isect1, pdist);
+      const float y = project(oldCeil, dist, 0.f);
+      draw_ceil(x, miny, maxy, oldmaxy, y, isect0, isect1, old_dist, dist);
       oldmaxy = y;
       maxy = SDL_max(y, maxy);
     }
 
     // draw step down
     if (ceil < oldCeil) {
-      const float y0 = project(oldCeil, pdist, 0.f);
-      const float y1 = project(ceil, pdist, 0.f);
-      draw_step_down(x, miny, maxy, y0, y1, oldCeil, ceil, axis, isect1, pdist);
+      const float y0 = project(oldCeil, dist, 0.f);
+      const float y1 = project(ceil, dist, 0.f);
+      draw_step_down(x, miny, maxy, y0, y1, oldCeil, ceil, axis, isect1, dist);
       oldmaxy = y1;
       maxy = SDL_max(y1, maxy);
     }
 
     // draw step up
     if (floor > oldFloor) {
-      const float y0 = project(floor, pdist);
-      const float y1 = project(oldFloor, pdist);
-      draw_step_up(x, miny, maxy, y0, y1, floor, oldFloor, axis, isect1, pdist);
+      const float y0 = project(floor, dist);
+      const float y1 = project(oldFloor, dist);
+      draw_step_up(x, miny, maxy, y0, y1, floor, oldFloor, axis, isect1, dist);
       oldminy = y0;
       miny = SDL_min(y0, miny);
     }
