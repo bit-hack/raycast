@@ -87,23 +87,38 @@ static void doMove(float moveSpeed, float rotSpeed) {
   eye_level += 0.1f * ((player_pos.z + 3.f) - eye_level);
 }
 
+#if 1
 void present(void) {
-#if 0
   const uint32_t *src = screen.data();
+  const uint16_t *dth = depth.data();
   uint32_t *dst = (uint32_t*)surf->pixels;
   const uint32_t pitch = surf->pitch / 4;
   for (uint32_t y = 0; y < screen_h; ++y) {
     for (uint32_t x = 0; x < screen_w; ++x) {
+
+      const uint8_t d = 0xff - (dth[x] >> 5);
+
       const uint32_t rgb = src[x];
-      dst[x * 2 + 0] = rgb;
-      dst[x * 2 + 1] = rgb;
-      dst[x * 2 + 0 + pitch] = rgb;
-      dst[x * 2 + 1 + pitch] = rgb;
+
+      // XXX: SIMD me please!
+      const uint8_t r = ((((rgb >> 16) & 0xff) * d) >> 8) & 0xff;
+      const uint8_t g = ((((rgb >>  8) & 0xff) * d) >> 8) & 0xff;
+      const uint8_t b = ((((rgb >>  0) & 0xff) * d) >> 8) & 0xff;
+
+      const uint32_t clr = (r << 16) | (g << 8) | b;
+
+      dst[x * 2 + 0] = clr;
+      dst[x * 2 + 1] = clr;
+      dst[x * 2 + 0 + pitch] = clr;
+      dst[x * 2 + 1 + pitch] = clr;
     }
     src += screen_w;
+    dth += screen_w;
     dst += pitch * 2;
   }
+}
 #else
+void present(void) {
   const uint16_t *src = depth.data();
   uint32_t *dst = (uint32_t*)surf->pixels;
   const uint32_t pitch = surf->pitch / 4;
@@ -118,8 +133,8 @@ void present(void) {
     src += screen_w;
     dst += pitch * 2;
   }
-#endif
 }
+#endif
 
 // The asset files are currently loaded relative to the executable.
 #define DIR_ROOT "."
@@ -197,7 +212,7 @@ int main(int argc, char *args[])
   }
   map.load(map_floor.data(), map_ceil.data());
 
-  surf = SDL_SetVideoMode(screen_w * 2, screen_h * 2, 32, SDL_FULLSCREEN);
+  surf = SDL_SetVideoMode(screen_w * 2, screen_h * 2, 32, 0);
 
   for(bool done = false; !done;)
   {

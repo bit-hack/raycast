@@ -83,9 +83,9 @@ void texture_t::_genMips(void) {
         uint32_t b = (((t0 & 0x0000ff) + (t1 & 0x0000ff) +
                        (t2 & 0x0000ff) + (t3 & 0x0000ff)) >> 2);
         // diminish
-        r = (r * 230) >> 8;
-        g = (g * 230) >> 8;
-        b = (b * 230) >> 8;
+//      r = (r * 230) >> 8;
+//      g = (g * 230) >> 8;
+//      b = (b * 230) >> 8;
         // store
         dst[x] = (r & 0xff0000) | (g & 0x00ff00) | (b & 0x0000ff);
       }
