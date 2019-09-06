@@ -22,6 +22,9 @@ if (NOT UNIX)
     configure_file(${SDL_INCLUDE_DIR}/../lib/x64/SDL.dll 
       ${PROJECT_BINARY_DIR}/SDL.dll COPYONLY)
   endif()
+else()
+  set(CMAKE_C_FLAGS "-march=nehalem")
+  set(CMAKE_CXX_FLAGS "-march=nehalem")
 endif()
 
 # Handle the game assets

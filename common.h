@@ -74,3 +74,7 @@ inline float cam_distance(const vec3f_t &p) {
 }
 
 } // namespace {}
+
+void present_screen(SDL_Surface *surf);
+void present_screen_sse(SDL_Surface *surf);
+void present_depth(SDL_Surface *surf);

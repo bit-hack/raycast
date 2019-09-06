@@ -25,11 +25,6 @@ const float near_plane_scale = .66f;
 
 static SDL_Surface *surf;
 
-// XXX: align me!
-// XXX: round up width
-std::array<uint32_t, screen_w*screen_h> screen;
-std::array<uint16_t, screen_w*screen_h> depth;
-
 
 static void doMove(float moveSpeed, float rotSpeed) {
   const uint8_t *keys = SDL_GetKeyState(nullptr);
@@ -100,58 +95,6 @@ static void doMove(float moveSpeed, float rotSpeed) {
   // lerp the eye level so it doesn't pop
   eye_level += 0.1f * ((player_pos.z + 3.f) - eye_level);
 }
-
-#if 1
-void present(void) {
-
-  // XXX: do lighting in here!
-
-  const uint32_t *src = screen.data();
-  const uint16_t *dth = depth.data();
-  uint32_t *dst = (uint32_t*)surf->pixels;
-  const uint32_t pitch = surf->pitch / 4;
-  for (uint32_t y = 0; y < screen_h; ++y) {
-    for (uint32_t x = 0; x < screen_w; ++x) {
-
-      const uint8_t d = 0xff - (dth[x] >> 5);
-
-      const uint32_t rgb = src[x];
-
-      // XXX: SIMD me please!
-      const uint8_t r = ((((rgb >> 16) & 0xff) * d) >> 8) & 0xff;
-      const uint8_t g = ((((rgb >>  8) & 0xff) * d) >> 8) & 0xff;
-      const uint8_t b = ((((rgb >>  0) & 0xff) * d) >> 8) & 0xff;
-
-      const uint32_t clr = (r << 16) | (g << 8) | b;
-
-      dst[x * 2 + 0] = clr;
-      dst[x * 2 + 1] = clr;
-      dst[x * 2 + 0 + pitch] = clr;
-      dst[x * 2 + 1 + pitch] = clr;
-    }
-    src += screen_w;
-    dth += screen_w;
-    dst += pitch * 2;
-  }
-}
-#else
-void present(void) {
-  const uint16_t *src = depth.data();
-  uint32_t *dst = (uint32_t*)surf->pixels;
-  const uint32_t pitch = surf->pitch / 4;
-  for (uint32_t y = 0; y < screen_h; ++y) {
-    for (uint32_t x = 0; x < screen_w; ++x) {
-      const uint32_t rgb = (src[x] * 8) & 0xff00;
-      dst[x * 2 + 0] = rgb;
-      dst[x * 2 + 1] = rgb;
-      dst[x * 2 + 0 + pitch] = rgb;
-      dst[x * 2 + 1 + pitch] = rgb;
-    }
-    src += screen_w;
-    dst += pitch * 2;
-  }
-}
-#endif
 
 // The asset files are currently loaded relative to the executable.
 #define DIR_ROOT "."
@@ -267,7 +210,7 @@ int main(int argc, char *args[])
     draw_sprite(sprites[0], vec3f_t{4, 4, 0}, 4);
 
     // present the screen
-    present();
+    present_screen_sse(surf);
     SDL_Flip(surf);
     screen.fill(0x10);
     SDL_Delay(5);
