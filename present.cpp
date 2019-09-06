@@ -1,7 +1,11 @@
 #include <array>
 #include <stdint.h>
 
+#ifndef _MSC_VER
 #include <x86intrin.h>
+#else
+#include <xmmintrin.h>
+#endif
 
 #include "common.h"
 
@@ -26,7 +30,6 @@ void present_screen(SDL_Surface *surf) {
 
       const uint32_t rgb = src[x];
 
-      // XXX: SIMD me please!
       const uint8_t r = ((((rgb >> 16) & 0xff) * d) >> 8) & 0xff;
       const uint8_t g = ((((rgb >>  8) & 0xff) * d) >> 8) & 0xff;
       const uint8_t b = ((((rgb >>  0) & 0xff) * d) >> 8) & 0xff;
@@ -44,9 +47,11 @@ void present_screen(SDL_Surface *surf) {
   }
 }
 
-void present_screen_sse(SDL_Surface *surf) {
+static inline __m128i _mul(__m128i a, __m128i b) {
+  return _mm_mullo_epi32(a, b);
+}
 
-  // XXX: do lighting in here!
+void present_screen_sse(SDL_Surface *surf) {
 
   const uint32_t *src = screen.data();
   const uint16_t *dth = depth.data();
@@ -58,42 +63,43 @@ void present_screen_sse(SDL_Surface *surf) {
     uint32_t *dx1 = dst + pitch;
 
     for (uint32_t x = 0; x < screen_w; x += 4) {
-
       __m128i m = _mm_set_epi32(0xff, 0xff, 0xff, 0xff);
-
-      // XXX: should be aligned
+      // XXX: do lighting here!
+      // load depth map
       __m128i d   = _mm_loadu_si128((const __m128i*)(dth + x));
       __m128i dt0 = _mm_srli_epi16(d, 5);
-      __m128i dt1 = _mm_sub_epi32(m, dt0);
-      __m128i dt2 = _mm_cvtepu16_epi32(dt1);
-
-      // XXX: should be aligned
+      __m128i dt1 = _mm_cvtepu16_epi32(dt0);
+      __m128i dt2 = _mm_sub_epi32(m, dt1);
+      // load pixels
       __m128i c = _mm_loadu_si128((const __m128i*)(src + x));
-
+      // red
       __m128i r   = _mm_srli_epi32(c, 16);
       __m128i rt0 = _mm_and_si128(r, m);
-      __m128i rt1 = _mm_mul_epu32(rt0, dt2);
+      __m128i rt1 = _mul(rt0, dt2);
       __m128i rt2 = _mm_slli_epi32(rt1, 8);
       __m128i rt3 = _mm_and_si128(rt2,
                       _mm_set_epi32(0xff0000, 0xff0000, 0xff0000, 0xff0000));
-
+      // green
       __m128i g   = _mm_srli_epi32(c, 8);
       __m128i gt0 = _mm_and_si128(g, m);
-      __m128i gt1 = _mm_mul_epu32(gt0, dt2);
+      __m128i gt1 = _mul(gt0, dt2);
       __m128i gt2 = _mm_and_si128(gt1,
                       _mm_set_epi32(0xff00, 0xff00, 0xff00, 0xff00));
-
+      // blue
       __m128i b   = _mm_srli_epi32(c, 0);
       __m128i bt0 = _mm_and_si128(b, m);
-      __m128i bt1 = _mm_mul_epu32(bt0, dt2);
+      __m128i bt1 = _mul(bt0, dt2);
       __m128i bt2 = _mm_srli_epi32(bt1, 8);
-
+      // blend all channels back together
       __m128i f =  _mm_or_si128(rt3, _mm_or_si128(gt2, bt2));
-
-      // TODO: W scale by two
-
-      _mm_storeu_si128((__m128i*)(dx0 + x * 2), f);
-      _mm_storeu_si128((__m128i*)(dx1 + x * 2), f);
+      // scale pixels x2 horizontaly
+      __m128i p0 = _mm_unpacklo_epi32(f, f);
+      __m128i p1 = _mm_unpackhi_epi32(f, f);
+      // store to screenbuffer
+      _mm_storeu_si128((__m128i*)(dx0 + x * 2 + 0), p0);
+      _mm_storeu_si128((__m128i*)(dx1 + x * 2 + 0), p0);
+      _mm_storeu_si128((__m128i*)(dx0 + x * 2 + 4), p1);
+      _mm_storeu_si128((__m128i*)(dx1 + x * 2 + 4), p1);
     }
 
     src += screen_w;
