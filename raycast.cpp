@@ -1,4 +1,5 @@
 #include "raycast.h"
+#include "map.h"
 
 
 enum axis_t { axis_x, axis_y };
@@ -346,6 +347,7 @@ void raycast(
       miny = SDL_min(y, miny);
     }
 
+#if 1
     // draw ceiling tile
     {
       const float y = project(oldCeil, dist, 0.f);
@@ -353,7 +355,9 @@ void raycast(
       oldmaxy = y;
       maxy = SDL_max(y, maxy);
     }
+#endif
 
+#if 1
     // draw step down
     if (ceil < oldCeil) {
       const float y0 = project(oldCeil, dist, 0.f);
@@ -362,6 +366,7 @@ void raycast(
       oldmaxy = y1;
       maxy = SDL_max(y1, maxy);
     }
+#endif
 
     // draw step up
     if (floor > oldFloor) {
@@ -376,7 +381,7 @@ void raycast(
     oldCeil = ceil;
 
     // check map tile for collision
-    if (floor >= 9) {
+    if (floor >= 63 || (maxy >= miny)) {
       break;
     }
 

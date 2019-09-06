@@ -7,11 +7,10 @@
 
 #include "texture.h"
 #include "vector.h"
-#include "map.h"
 
 
 extern std::array<texture_t, 16> texture;
-extern map_t map;
+extern struct map_t map;
 
 extern vec3f_t player_pos;
 extern float player_dir;
@@ -19,7 +18,10 @@ extern float eye_level;
 extern const float near_plane_scale;
 
 // screen width and height
-enum { screen_w = 320, screen_h = 240 };
+enum {
+  screen_w = 320,
+  screen_h = 240
+};
 
 extern std::array<uint32_t, screen_w*screen_h> screen;
 extern std::array<uint16_t, screen_w*screen_h> depth;

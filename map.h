@@ -5,13 +5,15 @@
 
 #include "vector.h"
 
+enum {
+  map_w = 128,
+  map_h = 128
+};
+
 
 struct map_t {
-  static const size_t mapWidth  = 24;
-  static const size_t mapHeight = 24;
-
-  std::array<uint8_t, mapWidth * mapHeight> floor;
-  std::array<uint8_t, mapWidth * mapHeight> ceil;
+  std::array<uint8_t, map_w * map_h> floor;
+  std::array<uint8_t, map_w * map_h> ceil;
 
   enum {
     block_left  = 1,
@@ -20,29 +22,27 @@ struct map_t {
     block_down  = 8,
   };
 
-  void load(const uint8_t *f, const uint8_t *c) {
-    memcpy(floor.data(), f, floor.size());
-    memcpy(ceil.data(), c, ceil.size());
-    calcBlockers();
-  }
+  void load(const char *fl, const char *cl);
 
   const uint8_t getHeight(int32_t x, int32_t y) const {
-    return floor[x + y * mapWidth];
+    return floor[x + y * map_w];
   }
 
   const uint8_t getCeil(int32_t x, int32_t y) const {
-    return ceil[x + y * mapWidth];
+    return ceil[x + y * map_w];
   }
 
   void resolve(const vec3f_t &p, const float r, vec2f_t &res) const;
 
 protected:
 
+  bool load_(const char *path, std::array<uint8_t, map_w*map_h> &out) const;
+
   // blocker flags
-  std::array<uint8_t, mapWidth * mapHeight> blockers;
+  std::array<uint8_t, map_w * map_h> blockers;
 
   uint8_t getHeight_(int32_t x, int32_t y) const {
-    return (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
+    return (x < 0 || x >= map_w || y < 0 || y >= map_h)
       ? 0xff : getHeight(x, y);
   }
 
