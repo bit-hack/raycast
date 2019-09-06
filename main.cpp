@@ -25,6 +25,8 @@ const float near_plane_scale = .66f;
 
 static SDL_Surface *surf;
 
+// XXX: align me!
+// XXX: round up width
 std::array<uint32_t, screen_w*screen_h> screen;
 std::array<uint16_t, screen_w*screen_h> depth;
 
@@ -33,6 +35,18 @@ static void doMove(float moveSpeed, float rotSpeed) {
   const uint8_t *keys = SDL_GetKeyState(nullptr);
 
   const vec2f_t dir = { sinf(player_dir), cosf(player_dir) };
+
+#if 0
+  {
+//    SDL_GrabMode(SDL_GRAB_ON);
+    int32_t mx, my;
+    SDL_GetMouseState(&mx, &my);
+    SDL_WarpMouse(screen_w, screen_h);
+
+    const int32_t dx = mx - screen_w;
+    player_dir += float(dx) * 0.01f;
+  }
+#endif
 
   // integrate player position
   player_pos.x += player_acc.x;
@@ -89,6 +103,9 @@ static void doMove(float moveSpeed, float rotSpeed) {
 
 #if 1
 void present(void) {
+
+  // XXX: do lighting in here!
+
   const uint32_t *src = screen.data();
   const uint16_t *dth = depth.data();
   uint32_t *dst = (uint32_t*)surf->pixels;
