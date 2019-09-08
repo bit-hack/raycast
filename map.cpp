@@ -73,14 +73,20 @@ void map_t::resolve(const vec3f_t &p, const float r, vec2f_t &res) const {
   res.y = sety ? res.y : 0.f;
 }
 
-void map_t::load(const char *fl, const char *cl) {
-  load_(fl, this->floor);
-  load_(cl, this->ceil);
+void map_t::load(const char *fl, const char *cl, const char *lt) {
+
+  this->floor.fill(0);
+  this->floor.fill(10);
+  this->light.fill(0xff);
+
+  load_(fl, this->floor, 4);
+  load_(cl, this->ceil, 4);
+  load_(lt, this->light, 1);
 
   calcBlockers();
 }
 
-bool map_t::load_(const char *path, std::array<uint8_t, map_w*map_h> &out) const {
+bool map_t::load_(const char *path, std::array<uint8_t, map_w*map_h> &out, uint32_t scale) const {
 
   SDL_Surface *map = SDL_LoadBMP(path);
   if (!map) {
@@ -97,7 +103,7 @@ bool map_t::load_(const char *path, std::array<uint8_t, map_w*map_h> &out) const
   uint8_t *dst = out.data();
   for (int y = 0; y < map_h; ++y) {
     for (int x = 0; x < map_w; ++x) {
-      dst[x] = src[x] / 4.f;
+      dst[x] = src[x] / scale;
     }
     src += map->pitch;
     dst += map_w;

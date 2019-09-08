@@ -25,6 +25,7 @@ enum {
 
 extern std::array<uint32_t, screen_w*screen_h> screen;
 extern std::array<uint16_t, screen_w*screen_h> depth;
+extern std::array<uint8_t, screen_w*screen_h> lightmap;
 
 
 namespace {

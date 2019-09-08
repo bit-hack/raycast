@@ -14,7 +14,8 @@ static void draw_ceil(
   const vec2f_t &p0,
   const vec2f_t &p1,
   const float d0,
-  const float d1) {
+  const float d1,
+  const uint8_t light) {
 
   const int32_t drawStart = SDL_max(int32_t(y0), maxy);
   const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);
@@ -44,6 +45,10 @@ static void draw_ceil(
   d += x;
   d += drawStart * screen_w;
   const uint16_t dval = uint16_t(d1 * 256.f);
+
+  uint8_t *l = lightmap.data();
+  l += x;
+  l += drawStart * screen_w;
 
   const float w0 = 1.f / d0;
   const float w1 = 1.f / d1;
@@ -76,9 +81,11 @@ static void draw_ceil(
 
     *p = tex[index];
     *d = 256.f / w;
+    *l = light;
 
     d += screen_w;
     p += screen_w;
+    l += screen_w;
   }
 }
 
@@ -91,7 +98,8 @@ static void draw_floor(
   const vec2f_t &p0,
   const vec2f_t &p1,
   const float d0,
-  const float d1)
+  const float d1,
+  const uint8_t light)
 {
   const int32_t drawStart = SDL_max(int32_t(y0), maxy);
   const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);
@@ -122,6 +130,10 @@ static void draw_floor(
   d += drawStart * screen_w;
   const uint16_t dval = uint16_t(d1 * 256.f);
 
+  uint8_t *l = lightmap.data();
+  l += x;
+  l += drawStart * screen_w;
+
   const float w0 = 1.f / d0;
   const float w1 = 1.f / d1;
   const float dw = (w0 - w1) / dy;
@@ -151,9 +163,11 @@ static void draw_floor(
 
     *p = tex[index];
     *d = 256.f / w;
+    *l = light;
 
     d += screen_w;
     p += screen_w;
+    l += screen_w;
   }
 }
 
@@ -167,7 +181,8 @@ static void draw_step_down(
   int32_t oldCeil,
   axis_t axis,
   const vec2f_t &isect,
-  const float dist)
+  const float dist,
+  const uint8_t light)
 {
   const int32_t drawStart = SDL_max(int32_t(SDL_max(maxy, y1)), 0);
   const int32_t drawEnd = SDL_min(int32_t(SDL_min(miny, y2)), screen_h - 1);
@@ -200,11 +215,17 @@ static void draw_step_down(
   d += drawStart * screen_w;
   const uint16_t dval = uint16_t(dist * 256.f);
 
+  uint8_t *l = lightmap.data();
+  l += x;
+  l += drawStart * screen_w;
+
   for (int32_t y = drawStart; y < drawEnd; ++y) {
     *p = tex[tex_size * (uint32_t(v * tex_size / 4) & tex_mask)];
     *d = dval;
+    *l = light;
     p += screen_w;
     d += screen_w;
+    l += screen_w;
     v -= dy;
   }
 }
@@ -219,7 +240,8 @@ static void draw_step_up(
   int32_t oldheight,
   axis_t axis,
   const vec2f_t &isect,
-  const float dist) {
+  const float dist,
+  const uint8_t light) {
 
   const int32_t drawStart = SDL_max(int32_t(SDL_max(maxy, y1)), 0);
   const int32_t drawEnd = SDL_min(int32_t(SDL_min(miny, y2)), screen_h - 1);
@@ -252,11 +274,17 @@ static void draw_step_up(
   d += drawStart * screen_w;
   const uint16_t dval = uint16_t(dist * 256.f);
 
+  uint8_t *l = lightmap.data();
+  l += x;
+  l += drawStart * screen_w;
+
   for (int32_t y = drawStart; y < drawEnd; ++y) {
     *p = tex[tex_size * (uint32_t(v * tex_size / 4) & tex_mask)];
     *d = dval;
+    *l = light;
     p += screen_w;
     d += screen_w;
+    l += screen_w;
     v -= dy;
   }
 }
@@ -303,6 +331,8 @@ void raycast(
   float oldmaxy = 0;
   uint8_t oldCeil = map.getCeil(cell.x, cell.y);
 
+  uint8_t oldLight = map.getLight(cell.x, cell.y);
+
   vec2f_t isect0 = {vx, vy};
   vec2f_t isect1;
 
@@ -342,7 +372,7 @@ void raycast(
     // draw floor tile
     {
       const float y = project(oldFloor, dist);
-      draw_floor(x, miny, maxy, y, oldminy, isect0, isect1, old_dist, dist);
+      draw_floor(x, miny, maxy, y, oldminy, isect0, isect1, old_dist, dist, oldLight);
       oldminy = y;
       miny = SDL_min(y, miny);
     }
@@ -350,10 +380,12 @@ void raycast(
 #if 1
     // draw ceiling tile
     {
-      const float y = project(oldCeil, dist, 0.f);
-      draw_ceil(x, miny, maxy, oldmaxy, y, isect0, isect1, old_dist, dist);
-      oldmaxy = y;
-      maxy = SDL_max(y, maxy);
+      if (ceil < 0xff) {
+        const float y = project(oldCeil, dist, 0.f);
+        draw_ceil(x, miny, maxy, oldmaxy, y, isect0, isect1, old_dist, dist, oldLight);
+        oldmaxy = y;
+        maxy = SDL_max(y, maxy);
+      }
     }
 #endif
 
@@ -362,7 +394,7 @@ void raycast(
     if (ceil < oldCeil) {
       const float y0 = project(oldCeil, dist, 0.f);
       const float y1 = project(ceil, dist, 0.f);
-      draw_step_down(x, miny, maxy, y0, y1, oldCeil, ceil, axis, isect1, dist);
+      draw_step_down(x, miny, maxy, y0, y1, oldCeil, ceil, axis, isect1, dist, oldLight);
       oldmaxy = y1;
       maxy = SDL_max(y1, maxy);
     }
@@ -372,13 +404,15 @@ void raycast(
     if (floor > oldFloor) {
       const float y0 = project(floor, dist);
       const float y1 = project(oldFloor, dist);
-      draw_step_up(x, miny, maxy, y0, y1, floor, oldFloor, axis, isect1, dist);
+      draw_step_up(x, miny, maxy, y0, y1, floor, oldFloor, axis, isect1, dist, oldLight);
       oldminy = y0;
       miny = SDL_min(y0, miny);
     }
 
     oldFloor = floor;
     oldCeil = ceil;
+
+    oldLight = map.getLight(cell.x, cell.y);
 
     // check map tile for collision
     if (floor >= 63 || (maxy >= miny)) {
