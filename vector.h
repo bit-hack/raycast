@@ -44,6 +44,10 @@ struct vec3_t {
     x += a.x; y += a.y; z += a.z;
   }
 
+  void operator *= (const float &a) {
+    x *= a; y *= a; z *= a;
+  }
+
   static type_t dot(const vec3_t &a, const vec3_t &b) {
     return a.x * b.x + a.y * b.y + a.z * b.z;
   }

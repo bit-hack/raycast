@@ -13,6 +13,7 @@
 #include "sprites.h"
 #include "texture.h"
 #include "vector.h"
+#include "things.h"
 
 // player
 vec3f_t player_pos{60.f, 66.f, 24.f};
@@ -22,6 +23,9 @@ float eye_level = 3.f;
 const float near_plane_scale = .66f;
 const uint32_t ticks_per_sec = 30;
 float view_bob = 0.f;
+
+// service locator
+service_t service;
 
 static SDL_Surface *surf;
 
@@ -137,8 +141,8 @@ void on_event(const SDL_Event *event) {
     case SDLK_ESCAPE:
       active = false;
       break;
-    case SDLK_F11:
-      SDL_WM_ToggleFullScreen(surf);
+    case SDLK_F10:
+      printf("%f, %f, %f\n", player_pos.x, player_pos.y, player_pos.z);
       break;
     case SDLK_F12:
       load_assets();
@@ -160,23 +164,25 @@ void redraw(void) {
     const float rayDirY = dir.y + planeY * cameraX;
     raycast(x, player_pos.x, player_pos.y, rayDirX, rayDirY);
   }
-
-  // test projection
-  draw_sprite(sprites[0], vec3f_t{4, 4, 0}, 4);
-
-  // present the screen
-  present_screen_sse(surf);
-  SDL_Flip(surf);
-  screen.fill(0x10);
 }
 
 void tick(void) {
+
   // speed modifiers
   const float moveSpeed = 0.5f / ticks_per_sec;
   const float rotSpeed = 2.7f / ticks_per_sec;
 
   player_move(moveSpeed, rotSpeed);
   mouse_look();
+
+  redraw();
+
+  service.things->tick();
+
+  // present the screen
+  present_screen_sse(surf);
+  SDL_Flip(surf);
+  screen.fill(0x10);
 }
 
 int main(int argc, char *args[]) {
@@ -186,6 +192,14 @@ int main(int argc, char *args[]) {
   if (!load_assets()) {
     return 1;
   }
+
+  thing_manager_t things;
+
+  service.map = &map;
+  service.things = &things;
+
+  thing_t *t = service.things->create(IMP);
+  t->pos = vec3f_t{64, 64, 16};
 
   lightmap.fill(0x7f);
 
@@ -208,6 +222,10 @@ int main(int argc, char *args[]) {
     const uint32_t new_ticks = SDL_GetTicks();
     const uint32_t tick_thresh = 1000 / ticks_per_sec;
     const uint32_t tick_diff = new_ticks - old_ticks;
+    if (tick_diff > 1000) {
+      old_ticks = new_ticks;
+      continue;
+    }
     if (tick_diff < tick_thresh) {
       SDL_Delay(1);
       continue;
@@ -215,7 +233,6 @@ int main(int argc, char *args[]) {
     old_ticks += tick_diff;
 
     // update
-    redraw();
     tick();
   }
 }

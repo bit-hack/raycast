@@ -42,7 +42,7 @@ bool sprite_t::load(const char *path) {
   return true;
 }
 
-void draw_sprite(sprite_t &s, const vec3f_t &pos, const float height) {
+void draw_sprite(sprite_t &s, const vec3f_t &pos, const float height, const uint8_t light) {
   vec2f_t p;
   const float dist = project(pos, p);
   if (dist <= .5f) {
@@ -75,6 +75,13 @@ void draw_sprite(sprite_t &s, const vec3f_t &pos, const float height) {
 
   const uint32_t *src = s.data.get();
 
+  uint8_t *lit = lightmap.data();
+
+  if (min.x > max.x) return;
+  if (min.y > max.y) return;
+  if (max.x < min.x) return;
+  if (max.y < min.y) return;
+
   for (int32_t y = min.y; y < max.y; ++y, ty += sy) {
     tx = (box_min.x < 0) ? sx * -box_min.x : 0.f;
     for (int32_t x = min.x; x < max.x; ++x, tx += sx) {
@@ -87,7 +94,8 @@ void draw_sprite(sprite_t &s, const vec3f_t &pos, const float height) {
       // alpha test
       if ((rgb & 0xff000000) == 0) {
         screen[x + y * screen_w] = rgb;
-        depth[x + y * screen_w] = d;
+        depth [x + y * screen_w] = d;
+        lit   [x + y * screen_w] = light;
       }
     }
   }

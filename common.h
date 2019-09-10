@@ -81,3 +81,10 @@ inline float cam_distance(const vec3f_t &p) {
 void present_screen(SDL_Surface *surf);
 void present_screen_sse(SDL_Surface *surf);
 void present_depth(SDL_Surface *surf);
+
+struct service_t {
+  struct map_t *map;
+  struct thing_manager_t *things;
+};
+
+extern service_t service;
