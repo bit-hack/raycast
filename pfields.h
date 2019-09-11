@@ -8,7 +8,11 @@ struct pfield_t {
 
   pfield_t(map_t &m)
     : map(m)
-  {}
+    , ff(0)
+  {
+    cell[0].fill(0);
+    cell[1].fill(0);
+  }
 
   void update();
 

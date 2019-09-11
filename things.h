@@ -43,10 +43,16 @@ struct thing_player_t: public thing_t {
 
 struct thing_imp_t: public thing_t {
 
+  vec2f_t target;
+
   thing_imp_t()
     : thing_t(IMP)
+    , target(vec2f_t{999.f, 999.f})
   {}
 
   void on_create() override;
   void tick() override;
+
+protected:
+  void replan();
 };

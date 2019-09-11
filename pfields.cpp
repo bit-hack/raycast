@@ -21,12 +21,14 @@ void pfield_t::update() {
       const uint8_t h = map.getHeight(x, y);
 
       const uint8_t cc = src[x];
-      const uint8_t y0 = is_passable(x, y-1, h) ? src[x + (y - map_w)] : 0;
-      const uint8_t y1 = is_passable(x, y+1, h) ? src[x + (y + map_w)] : 0;
+      const uint8_t y0 = is_passable(x, y-1, h) ? src[x - map_w] : 0;
+      const uint8_t y1 = is_passable(x, y+1, h) ? src[x + map_w] : 0;
       const uint8_t x0 = is_passable(x-1, y, h) ? src[x - 1] : 0;
       const uint8_t x1 = is_passable(x+1, y, h) ? src[x + 1] : 0;
 
-      dst[x] = std::max({x0, x1, y0, y1, cc}) - 1;
+      const uint8_t out = std::max({x0, x1, y0, y1, cc});
+
+      dst[x] = out ? out - 1 : 0;
     }
   }
 }

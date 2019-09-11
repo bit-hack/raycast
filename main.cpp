@@ -14,6 +14,7 @@
 #include "texture.h"
 #include "vector.h"
 #include "things.h"
+#include "pfields.h"
 
 // player
 vec3f_t player_pos{60.f, 66.f, 24.f};
@@ -128,6 +129,9 @@ static void player_move(float moveSpeed, float rotSpeed) {
     float bob = sinf(view_bob) * acc_mag;
     eye_level += 0.1f * ((player_pos.z + bob + 3.f) - eye_level);
   }
+
+  // update pfield
+  service.pfield->set(player_pos.x, player_pos.y, 0x75);
 }
 
 bool active = true;
@@ -166,7 +170,21 @@ void redraw(void) {
   }
 }
 
+void draw_pfield() {
+  pfield_t *p = service.pfield;
+  for (uint32_t y = 0; y < map_h; ++y) {
+    for (uint32_t x = 0; x < map_w; ++x) {
+      const uint8_t v = p->get(x, y);
+      lightmap[x + y * screen_w] = 0xff;
+      depth[x + y * screen_w] = 0;
+      screen[x + y * screen_w] = v;
+    }
+  }
+}
+
 void tick(void) {
+
+  service.pfield->update();
 
   // speed modifiers
   const float moveSpeed = 0.5f / ticks_per_sec;
@@ -178,6 +196,8 @@ void tick(void) {
   redraw();
 
   service.things->tick();
+
+//  draw_pfield();
 
   // present the screen
   present_screen_sse(surf);
@@ -197,11 +217,13 @@ int main(int argc, char *args[]) {
 
   service.map = &map;
   service.things = &things;
+  service.pfield = new pfield_t(map);
 
   thing_t *t = service.things->create(IMP);
-  t->pos = vec3f_t{64, 64, 16};
+  t->pos = vec3f_t{63.2f, 64.8f, 16};
 
-  lightmap.fill(0x7f);
+  thing_t *k = service.things->create(IMP);
+  k->pos = vec3f_t{61.f, 64.3f, 16};
 
   surf = SDL_SetVideoMode(screen_w * 2, screen_h * 2, 32, 0);
   if (!surf) {

@@ -85,6 +85,7 @@ void present_depth(SDL_Surface *surf);
 struct service_t {
   struct map_t *map;
   struct thing_manager_t *things;
+  struct pfield_t *pfield;
 };
 
 extern service_t service;
