@@ -75,6 +75,10 @@ void map_t::resolve(const vec3f_t &p, const float r, vec2f_t &res) const {
 
 void map_t::load(const char *fl, const char *cl, const char *lt) {
 
+  tex_wall.fill(0);
+  tex_floor.fill(1);
+  tex_ceil.fill(2);
+
   this->floor.fill(0);
   this->floor.fill(10);
   this->light.fill(0xff);

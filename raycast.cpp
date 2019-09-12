@@ -15,9 +15,10 @@ static void draw_ceil(
   const vec2f_t &p1,
   const float d0,
   const float d1,
-  const uint8_t light) {
+  const uint8_t light,
+  const texture_t &texture) {
 
-  const int32_t drawStart = SDL_max(int32_t(y0), maxy);
+  const int32_t drawStart = int32_t(SDL_max(y0, maxy));
   const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);
   if (drawStart >= drawEnd) {
     return;
@@ -31,7 +32,7 @@ static void draw_ceil(
 
   uint32_t tex_mask = 0x3f >> level;
   uint32_t tex_size = 64 >> level;
-  const uint32_t *tex = texture[2].getTexture(level);
+  const uint32_t *tex = texture.getTexture(level);
 
   // note: work from p1 -> p0 because we render downwards
 
@@ -80,7 +81,7 @@ static void draw_ceil(
     w += dw;
 
     *p = tex[index];
-    *d = 256.f / w;
+    *d = uint16_t(256.f / w);
     *l = light;
 
     d += screen_w;
@@ -99,9 +100,10 @@ static void draw_floor(
   const vec2f_t &p1,
   const float d0,
   const float d1,
-  const uint8_t light)
+  const uint8_t light,
+  const texture_t &texture)
 {
-  const int32_t drawStart = SDL_max(int32_t(y0), maxy);
+  const int32_t drawStart = int32_t(SDL_max(y0, maxy));
   const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);
   if (drawStart >= drawEnd) {
     return;
@@ -115,7 +117,7 @@ static void draw_floor(
 
   uint32_t tex_mask = 0x3f >> level;
   uint32_t tex_size = 64 >> level;
-  const uint32_t *tex = texture[1].getTexture(level);
+  const uint32_t *tex = texture.getTexture(level);
 
   // note: work from p1 -> p0 because we render downwards
 
@@ -162,7 +164,7 @@ static void draw_floor(
     w += dw;
 
     *p = tex[index];
-    *d = 256.f / w;
+    *d = uint16_t(256.f / w);
     *l = light;
 
     d += screen_w;
@@ -182,7 +184,8 @@ static void draw_step_down(
   axis_t axis,
   const vec2f_t &isect,
   const float dist,
-  const uint8_t light)
+  const uint8_t light,
+  const texture_t &texture)
 {
   const int32_t drawStart = SDL_max(int32_t(SDL_max(maxy, y1)), 0);
   const int32_t drawEnd = SDL_min(int32_t(SDL_min(miny, y2)), screen_h - 1);
@@ -195,7 +198,7 @@ static void draw_step_down(
 
   uint32_t tex_mask = 0x3f >> level;
   uint32_t tex_size = 64 >> level;
-  const uint32_t *tex = texture[0].getTexture(level);
+  const uint32_t *tex = texture.getTexture(level);
 
   const float dy = float(ceil - oldCeil) / (y1 - y2);
 
@@ -241,7 +244,8 @@ static void draw_step_up(
   axis_t axis,
   const vec2f_t &isect,
   const float dist,
-  const uint8_t light) {
+  const uint8_t light,
+  const texture_t &texture) {
 
   const int32_t drawStart = SDL_max(int32_t(SDL_max(maxy, y1)), 0);
   const int32_t drawEnd = SDL_min(int32_t(SDL_min(miny, y2)), screen_h - 1);
@@ -254,7 +258,7 @@ static void draw_step_up(
 
   uint32_t tex_mask = 0x3f >> level;
   uint32_t tex_size = 64 >> level;
-  const uint32_t *tex = texture[0].getTexture(level);
+  const uint32_t *tex = texture.getTexture(level);
 
   const float dy = float(height - oldheight) / (y1 - y2);
 
@@ -371,8 +375,9 @@ void raycast(
 
     // draw floor tile
     {
+      const texture_t &t = texture[map.tex_floor[ cell.x + cell.y * map_w ]];
       const float y = project(oldFloor, dist);
-      draw_floor(x, miny, maxy, y, oldminy, isect0, isect1, old_dist, dist, oldLight);
+      draw_floor(x, miny, maxy, y, oldminy, isect0, isect1, old_dist, dist, oldLight, t);
       oldminy = y;
       miny = SDL_min(y, miny);
     }
@@ -381,8 +386,9 @@ void raycast(
     // draw ceiling tile
     {
       if (ceil < 0xff) {
+        const texture_t &t = texture[map.tex_ceil[ cell.x + cell.y * map_w ]];
         const float y = project(oldCeil, dist, 0.f);
-        draw_ceil(x, miny, maxy, oldmaxy, y, isect0, isect1, old_dist, dist, oldLight);
+        draw_ceil(x, miny, maxy, oldmaxy, y, isect0, isect1, old_dist, dist, oldLight, t);
         oldmaxy = y;
         maxy = SDL_max(y, maxy);
       }
@@ -392,9 +398,10 @@ void raycast(
 #if 1
     // draw step down
     if (ceil < oldCeil) {
+      const texture_t &t = texture[map.tex_wall[ cell.x + cell.y * map_w ]];
       const float y0 = project(oldCeil, dist, 0.f);
       const float y1 = project(ceil, dist, 0.f);
-      draw_step_down(x, miny, maxy, y0, y1, oldCeil, ceil, axis, isect1, dist, oldLight);
+      draw_step_down(x, miny, maxy, y0, y1, oldCeil, ceil, axis, isect1, dist, oldLight, t);
       oldmaxy = y1;
       maxy = SDL_max(y1, maxy);
     }
@@ -402,9 +409,10 @@ void raycast(
 
     // draw step up
     if (floor > oldFloor) {
+      const texture_t &t = texture[map.tex_wall[ cell.x + cell.y * map_w ]];
       const float y0 = project(floor, dist);
       const float y1 = project(oldFloor, dist);
-      draw_step_up(x, miny, maxy, y0, y1, floor, oldFloor, axis, isect1, dist, oldLight);
+      draw_step_up(x, miny, maxy, y0, y1, floor, oldFloor, axis, isect1, dist, oldLight, t);
       oldminy = y0;
       miny = SDL_min(y0, miny);
     }

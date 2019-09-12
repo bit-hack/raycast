@@ -16,6 +16,10 @@ struct map_t {
   std::array<uint8_t, map_w * map_h> ceil;
   std::array<uint8_t, map_w * map_h> light;
 
+  std::array<uint8_t, map_w * map_h> tex_wall;
+  std::array<uint8_t, map_w * map_h> tex_floor;
+  std::array<uint8_t, map_w * map_h> tex_ceil;
+
   enum {
     block_left  = 1,
     block_right = 2,
