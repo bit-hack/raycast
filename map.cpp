@@ -77,7 +77,7 @@ void map_t::load(const char *fl, const char *cl, const char *lt) {
 
   tex_wall.fill(0);
   tex_floor.fill(1);
-  tex_ceil.fill(2);
+  tex_ceil.fill(11);
 
   this->floor.fill(0);
   this->floor.fill(10);

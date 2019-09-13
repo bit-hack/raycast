@@ -33,10 +33,14 @@ static SDL_Surface *surf;
 bool load_assets() {
 // The asset files are currently loaded relative to the executable.
 #define DIR_ROOT "."
+
   texture[0].load(DIR_ROOT "/data/walls/boxy.bmp");
   texture[1].load(DIR_ROOT "/data/floors/hex.bmp");
   texture[2].load(DIR_ROOT "/data/ceil/stone.bmp");
+
   sprites[0].load(DIR_ROOT "/data/things/test.bmp");
+  sprites[1].load(DIR_ROOT "/data/sky/sky.bmp");
+
   map.load(DIR_ROOT "/data/map/e1m1_floor.bmp",
            DIR_ROOT "/data/map/e1m1_ceil.bmp",
            DIR_ROOT "/data/map/e1m1_light.bmp");

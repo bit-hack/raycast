@@ -1,9 +1,50 @@
 #include "raycast.h"
 #include "map.h"
+#include "sprites.h"
 
 
 enum axis_t { axis_x, axis_y };
 
+
+static void draw_sky(
+  int32_t x,
+  float miny,
+  float maxy,
+  float y0,
+  float y1
+) {
+  const sprite_t &sky = sprites[1];
+
+  float fy = 1.f;
+  float fx = (2.f * (float(x) / float(screen_w)) - 1.f) * near_plane_scale;
+
+  const float pi = 3.14159265359f;
+
+  const float a = 256.f * ((atan2f(fy, fx)));
+  const uint32_t d = int32_t(a) & 0xff;
+
+  const int32_t drawStart = int32_t(SDL_max(y0, maxy));
+  const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);
+  if (drawStart >= drawEnd) {
+    return;
+  }
+
+  uint32_t *p = screen.data();
+  p += x;
+  p += drawStart * screen_w;
+
+  const uint32_t *s = sky.data.get();
+  s + d * sky.w;
+  s + (drawStart / 2);
+
+  for (int32_t y = drawStart; y < drawEnd; ++y) {
+
+    *p = *s;
+
+    p += screen_w;
+    s += (y & 1) ? 0 : 1;
+  }
+}
 
 static void draw_ceil(
   int32_t x,
@@ -17,6 +58,12 @@ static void draw_ceil(
   const float d1,
   const uint8_t light,
   const texture_t &texture) {
+
+  // if we have no texture then draw the sky instead
+  if (!texture.loaded()) {
+    draw_sky(x, miny, maxy, y0, y1);
+    return;
+  }
 
   const int32_t drawStart = int32_t(SDL_max(y0, maxy));
   const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);

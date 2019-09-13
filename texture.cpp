@@ -58,6 +58,7 @@ bool texture_t::load(const char *path) {
   SDL_FreeSurface(bmp);
 
   _genMips();
+  _loaded = true;
   return true;
 }
 

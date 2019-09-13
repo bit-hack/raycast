@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "pfields.h"
 
 bool pfield_t::is_passable(int x, int y, uint8_t h) {
