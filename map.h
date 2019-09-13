@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <array>
 #include <cstring>
+#include <string>
 
 #include "vector.h"
 
@@ -27,7 +28,7 @@ struct map_t {
     block_down  = 8,
   };
 
-  void load(const char *fl, const char *cl, const char *lt);
+  void load(const std::string &path);
 
   const uint8_t getHeight(int32_t x, int32_t y) const {
     return floor[x + y * map_w];
@@ -45,7 +46,7 @@ struct map_t {
 
 protected:
 
-  bool load_(const char *path, std::array<uint8_t, map_w*map_h> &out, uint32_t scale) const;
+  bool load_(const std::string &path, std::array<uint8_t, map_w*map_h> &out, uint32_t scale) const;
 
   // blocker flags
   std::array<uint8_t, map_w * map_h> blockers;

@@ -20,8 +20,8 @@ static void draw_sky(
 
   const float pi = 3.14159265359f;
 
-  const float a = 256.f * ((atan2f(fy, fx)));
-  const uint32_t d = int32_t(a) & 0xff;
+  const float a = 512.f * ((atan2f(fy, fx) - player_dir) / pi);
+  const uint32_t o = int32_t(a) & 0x1ff;
 
   const int32_t drawStart = int32_t(SDL_max(y0, maxy));
   const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);
@@ -33,16 +33,26 @@ static void draw_sky(
   p += x;
   p += drawStart * screen_w;
 
+  uint16_t *d = depth.data();
+  d += x;
+  d += drawStart * screen_w;
+
+  uint8_t *l = lightmap.data();
+  l += x;
+  l += drawStart * screen_w;
+
   const uint32_t *s = sky.data.get();
-  s + d * sky.w;
-  s + (drawStart / 2);
+  s += o * sky.w;
 
   for (int32_t y = drawStart; y < drawEnd; ++y) {
 
-    *p = *s;
+    *p = s[y / 2];
+    *l = 0xff;
+    *d = 0xfff;
 
     p += screen_w;
-    s += (y & 1) ? 0 : 1;
+    d += screen_w;
+    l += screen_w;
   }
 }
 
@@ -392,6 +402,8 @@ void raycast(
 
     const float old_dist = dist;
 
+    const uint32_t tex_index = cell.x + cell.y * map_w;
+
     // step ray to next intersection
     if (len.x < len.y) {
       axis = axis_x;
@@ -422,7 +434,7 @@ void raycast(
 
     // draw floor tile
     {
-      const texture_t &t = texture[map.tex_floor[ cell.x + cell.y * map_w ]];
+      const texture_t &t = texture[0xf & map.tex_floor[tex_index]];
       const float y = project(oldFloor, dist);
       draw_floor(x, miny, maxy, y, oldminy, isect0, isect1, old_dist, dist, oldLight, t);
       oldminy = y;
@@ -433,7 +445,8 @@ void raycast(
     // draw ceiling tile
     {
       if (ceil < 0xff) {
-        const texture_t &t = texture[map.tex_ceil[ cell.x + cell.y * map_w ]];
+        const int index_ceil_tex = map.tex_ceil[tex_index];
+        const texture_t &t = texture[index_ceil_tex ];
         const float y = project(oldCeil, dist, 0.f);
         draw_ceil(x, miny, maxy, oldmaxy, y, isect0, isect1, old_dist, dist, oldLight, t);
         oldmaxy = y;
@@ -445,7 +458,7 @@ void raycast(
 #if 1
     // draw step down
     if (ceil < oldCeil) {
-      const texture_t &t = texture[map.tex_wall[ cell.x + cell.y * map_w ]];
+      const texture_t &t = texture[0xf & map.tex_wall[tex_index]];
       const float y0 = project(oldCeil, dist, 0.f);
       const float y1 = project(ceil, dist, 0.f);
       draw_step_down(x, miny, maxy, y0, y1, oldCeil, ceil, axis, isect1, dist, oldLight, t);
@@ -456,7 +469,7 @@ void raycast(
 
     // draw step up
     if (floor > oldFloor) {
-      const texture_t &t = texture[map.tex_wall[ cell.x + cell.y * map_w ]];
+      const texture_t &t = texture[0xf & map.tex_wall[tex_index]];
       const float y0 = project(floor, dist);
       const float y1 = project(oldFloor, dist);
       draw_step_up(x, miny, maxy, y0, y1, floor, oldFloor, axis, isect1, dist, oldLight, t);

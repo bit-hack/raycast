@@ -73,26 +73,30 @@ void map_t::resolve(const vec3f_t &p, const float r, vec2f_t &res) const {
   res.y = sety ? res.y : 0.f;
 }
 
-void map_t::load(const char *fl, const char *cl, const char *lt) {
+void map_t::load(const std::string &path) {
 
   tex_wall.fill(0);
   tex_floor.fill(1);
   tex_ceil.fill(11);
 
-  this->floor.fill(0);
-  this->floor.fill(10);
-  this->light.fill(0xff);
+  floor.fill(0);
+  floor.fill(10);
+  light.fill(0xff);
 
-  load_(fl, this->floor, 4);
-  load_(cl, this->ceil, 4);
-  load_(lt, this->light, 1);
+//  load_(path + "_tex_wall.bmp", this->tex_wall, 4);
+//  load_(path + "_tex_floor.bmp", this->tex_floor, 4);
+  load_(path + "_tex_ceil.bmp", this->tex_ceil, 4);
+
+  load_(path + "_floor.bmp", this->floor, 4);
+  load_(path + "_ceil.bmp", this->ceil, 4);
+  load_(path + "_light.bmp", this->light, 1);
 
   calcBlockers();
 }
 
-bool map_t::load_(const char *path, std::array<uint8_t, map_w*map_h> &out, uint32_t scale) const {
+bool map_t::load_(const std::string &path, std::array<uint8_t, map_w*map_h> &out, uint32_t scale) const {
 
-  SDL_Surface *map = SDL_LoadBMP(path);
+  SDL_Surface *map = SDL_LoadBMP(path.c_str());
   if (!map) {
     return false;
   }

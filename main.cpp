@@ -41,9 +41,7 @@ bool load_assets() {
   sprites[0].load(DIR_ROOT "/data/things/test.bmp");
   sprites[1].load(DIR_ROOT "/data/sky/sky.bmp");
 
-  map.load(DIR_ROOT "/data/map/e1m1_floor.bmp",
-           DIR_ROOT "/data/map/e1m1_ceil.bmp",
-           DIR_ROOT "/data/map/e1m1_light.bmp");
+  map.load(DIR_ROOT "/data/map/e1m1");
   return true;
 }
 
