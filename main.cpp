@@ -106,7 +106,7 @@ static void player_move(float moveSpeed, float rotSpeed) {
 
   // do gravity and floor collision checking
   const float fl = float(map.getHeight(int(player_pos.x), int(player_pos.y)));
-  if (player_pos.z < fl) {
+  if (player_pos.z <= fl) {
     player_pos.z = fl;
     player_acc.z = 0.f;
   } else {
@@ -123,7 +123,7 @@ static void player_move(float moveSpeed, float rotSpeed) {
     }
     float acc_mag = sqrtf(vec3f_t::dot(player_acc, player_acc)) * 2.25f;
     float bob = sinf(view_bob) * acc_mag;
-    eye_level += 0.1f * ((player_pos.z + bob + 3.f) - eye_level);
+    eye_level += 0.2f * ((player_pos.z + bob + 3.f) - eye_level);
   }
 
   // update pfield
@@ -201,6 +201,14 @@ void tick(void) {
   present_screen_sse(surf);
   SDL_Flip(surf);
   screen.fill(0x10);
+}
+
+void plot(int x, int y, uint32_t rgb) {
+  if (x > 0 && x < screen_w) {
+    if (y > 0 && y < screen_h) {
+      screen[x + y * screen_w] = rgb;
+    }
+  }
 }
 
 int main(int argc, char *args[]) {

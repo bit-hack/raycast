@@ -89,3 +89,5 @@ struct service_t {
 };
 
 extern service_t service;
+
+void plot(int x, int y, uint32_t rgb);

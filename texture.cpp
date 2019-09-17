@@ -92,7 +92,6 @@ void texture_t::_genMips(void) {
       }
       dst += size;
     }
-
   }
 }
 

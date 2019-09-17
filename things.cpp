@@ -27,33 +27,31 @@ static float randf() {
 
 void thing_imp_t::replan() {
 
-  uint8_t best = 0;
+  const float px = pos.x + randf() * 2.f;
+  const float py = pos.y + randf() * 2.f;
 
-  for (int i = 0; i < 8; ++i) {
-    const float px = pos.x + randf() * 2.f;
-    const float py = pos.y + randf() * 2.f;
+  const uint8_t n = service.pfield->get(px, py);
 
-    const uint8_t n = service.pfield->get(px, py);
-
-    if (n >= best) {
-      best = n;
-      target.x = px;
-      target.y = py;
-    }
+  if (n >= service.pfield->get(target.x, target.y)) {
+    target.x = px;
+    target.y = py;
   }
+}
+
+static float move_to(float dx, float speed, float thresh) {
+  return (dx > thresh) ? speed : ((dx < thresh) ? -speed : 0.f);;
 }
 
 void thing_imp_t::tick() {
 
   {
+    replan();
     const float dx = target.x - pos.x;
     const float dy = target.y - pos.y;
     const float d = dx*dx + dy*dy;
-    if (d > 2.f || d < .5f) {
-      replan();
-    } else {
-      acc.x += dx * 0.003f;
-      acc.y += dy * 0.003f;
+    if (d > .1f) {
+      acc.x += move_to(dx, 0.003f, 0.01f);
+      acc.y += move_to(dy, 0.003f, 0.01f);
     }
   }
 
@@ -77,6 +75,11 @@ void thing_imp_t::tick() {
   const uint8_t l = service.map->getLight(pos.x, pos.y);
 
   draw_sprite(sprites[0], pos, 4, l);
+
+  vec2f_t p;
+  if (project(vec3f_t{target.x, target.y, pos.z}, p) > 0) {
+    plot(p.x, p.y, 0xFFFFFF);
+  }
 }
 
 thing_t *thing_manager_t::create(thing_type_t type) {
