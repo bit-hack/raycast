@@ -19,3 +19,5 @@ void draw_sprite(
   const vec3f_t &p,     // sprite location
   const float height,   // sprite height
   const uint8_t light); // brightness
+
+bool load_sprites();

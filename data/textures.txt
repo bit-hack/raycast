@@ -1,0 +1,6 @@
+./data/walls/boxy.bmp
+./data/floors/hex.bmp
+./data/ceil/stone.bmp
+./data/floors/slime.bmp
+./data/walls/kbrick1.bmp
+./data/floors/fstna_2.bmp

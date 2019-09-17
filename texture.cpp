@@ -95,3 +95,23 @@ void texture_t::_genMips(void) {
 
   }
 }
+
+bool load_textures() {
+  FILE *f = fopen("data/textures.txt", "r");
+  if (!f) {
+    return true;
+  }
+  std::array<char, 256> temp;
+  for (int i = 0; i < texture.size() && !feof(f); ++i) {
+    temp[0] = '\0';
+    if (!fgets(temp.data(), temp.size(), f)) {
+      break;
+    }
+    temp[255] = '\0';
+    temp[strcspn(temp.data(), "\n" )] = '\0';
+    if (!texture[i].load(temp.data())) {
+      // oh dear
+    }
+  }
+  return true;
+}

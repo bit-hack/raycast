@@ -100,3 +100,23 @@ void draw_sprite(sprite_t &s, const vec3f_t &pos, const float height, const uint
     }
   }
 }
+
+bool load_sprites() {
+  FILE *f = fopen("data/sprites.txt", "r");
+  if (!f) {
+    return true;
+  }
+  std::array<char, 256> temp;
+  for (int i = 0; i < sprites.size() && !feof(f); ++i) {
+    temp[0] = '\0';
+    if (!fgets(temp.data(), temp.size(), f)) {
+      break;
+    }
+    temp[255] = '\0';
+    temp[strcspn(temp.data(), "\n" )] = '\0';
+    if (!sprites[i].load(temp.data())) {
+      // oh dear
+    }
+  }
+  return true;
+}

@@ -14,6 +14,9 @@ static void draw_sky(
   float y1
 ) {
   const sprite_t &sky = sprites[1];
+  if (!sky.data) {
+    return;
+  }
 
   float fy = 1.f;
   float fx = (2.f * (float(x) / float(screen_w)) - 1.f) * near_plane_scale;

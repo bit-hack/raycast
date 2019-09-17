@@ -33,17 +33,8 @@ static SDL_Surface *surf;
 bool load_assets() {
 // The asset files are currently loaded relative to the executable.
 #define DIR_ROOT "."
-
-  texture[0].load(DIR_ROOT "/data/walls/boxy.bmp");
-  texture[1].load(DIR_ROOT "/data/floors/hex.bmp");
-  texture[2].load(DIR_ROOT "/data/ceil/stone.bmp");
-  texture[3].load(DIR_ROOT "/data/floors/slime.bmp");
-  texture[4].load(DIR_ROOT "/data/walls/kbrick1.bmp");
-  texture[5].load(DIR_ROOT "/data/floors/fstna_2.bmp");
-
-  sprites[0].load(DIR_ROOT "/data/things/test.bmp");
-  sprites[1].load(DIR_ROOT "/data/sky/sky.bmp");
-
+  load_textures();
+  load_sprites();
   map.load(DIR_ROOT "/data/map/e1m1");
   return true;
 }
@@ -136,7 +127,9 @@ static void player_move(float moveSpeed, float rotSpeed) {
   }
 
   // update pfield
-  service.pfield->set(player_pos.x, player_pos.y, 0x75);
+  service.pfield->set(
+    int32_t(player_pos.x),
+    int32_t(player_pos.y), 0x75);
 }
 
 bool active = true;

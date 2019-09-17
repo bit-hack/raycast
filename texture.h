@@ -26,3 +26,5 @@ protected:
   void _genMips(void);
   uint32_t *_getTexture(uint32_t level);
 };
+
+bool load_textures();
