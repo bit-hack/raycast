@@ -41,3 +41,5 @@ add_custom_command(TARGET raycast PRE_BUILD
 install (TARGETS raycast DESTINATION bin)
 install (FILES ${ASSET_DIR}/walls/boxy.bmp DESTINATION bin/data/walls)
 install (FILES ${ASSET_DIR}/floors/hex.bmp DESTINATION bin/data/floors)
+
+add_subdirectory(mapper)
