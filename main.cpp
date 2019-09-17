@@ -37,6 +37,9 @@ bool load_assets() {
   texture[0].load(DIR_ROOT "/data/walls/boxy.bmp");
   texture[1].load(DIR_ROOT "/data/floors/hex.bmp");
   texture[2].load(DIR_ROOT "/data/ceil/stone.bmp");
+  texture[3].load(DIR_ROOT "/data/floors/slime.bmp");
+  texture[4].load(DIR_ROOT "/data/walls/kbrick1.bmp");
+  texture[5].load(DIR_ROOT "/data/floors/fstna_2.bmp");
 
   sprites[0].load(DIR_ROOT "/data/things/test.bmp");
   sprites[1].load(DIR_ROOT "/data/sky/sky.bmp");

@@ -402,7 +402,7 @@ void raycast(
 
     const float old_dist = dist;
 
-    const uint32_t tex_index = cell.x + cell.y * map_w;
+    const uint32_t tex_index_0 = cell.x + cell.y * map_w;
 
     // step ray to next intersection
     if (len.x < len.y) {
@@ -428,13 +428,15 @@ void raycast(
       dist = ((cell.y - vy) + (step.y < 0 ? 1 : 0)) / ry;
     }
 
+    const uint32_t tex_index_1 = cell.x + cell.y * map_w;
+
     // current floor/ceiling height
     const uint8_t floor = map.getHeight(cell.x, cell.y);
     const uint8_t ceil = map.getCeil(cell.x, cell.y);
 
     // draw floor tile
     {
-      const texture_t &t = texture[0xf & map.tex_floor[tex_index]];
+      const texture_t &t = texture[0xf & map.tex_floor[tex_index_0]];
       const float y = project(oldFloor, dist);
       draw_floor(x, miny, maxy, y, oldminy, isect0, isect1, old_dist, dist, oldLight, t);
       oldminy = y;
@@ -445,7 +447,7 @@ void raycast(
     // draw ceiling tile
     {
       if (ceil < 0xff) {
-        const int index_ceil_tex = map.tex_ceil[tex_index];
+        const int index_ceil_tex = map.tex_ceil[tex_index_0];
         const texture_t &t = texture[index_ceil_tex ];
         const float y = project(oldCeil, dist, 0.f);
         draw_ceil(x, miny, maxy, oldmaxy, y, isect0, isect1, old_dist, dist, oldLight, t);
@@ -458,7 +460,7 @@ void raycast(
 #if 1
     // draw step down
     if (ceil < oldCeil) {
-      const texture_t &t = texture[0xf & map.tex_wall[tex_index]];
+      const texture_t &t = texture[0xf & map.tex_wall[tex_index_1]];
       const float y0 = project(oldCeil, dist, 0.f);
       const float y1 = project(ceil, dist, 0.f);
       draw_step_down(x, miny, maxy, y0, y1, oldCeil, ceil, axis, isect1, dist, oldLight, t);
@@ -469,7 +471,7 @@ void raycast(
 
     // draw step up
     if (floor > oldFloor) {
-      const texture_t &t = texture[0xf & map.tex_wall[tex_index]];
+      const texture_t &t = texture[0xf & map.tex_wall[tex_index_1]];
       const float y0 = project(floor, dist);
       const float y1 = project(oldFloor, dist);
       draw_step_up(x, miny, maxy, y0, y1, floor, oldFloor, axis, isect1, dist, oldLight, t);

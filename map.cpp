@@ -83,8 +83,8 @@ void map_t::load(const std::string &path) {
   floor.fill(10);
   light.fill(0xff);
 
-//  load_(path + "_tex_wall.bmp", this->tex_wall, 4);
-//  load_(path + "_tex_floor.bmp", this->tex_floor, 4);
+  load_(path + "_tex_wall.bmp", this->tex_wall, 4);
+  load_(path + "_tex_floor.bmp", this->tex_floor, 4);
   load_(path + "_tex_ceil.bmp", this->tex_ceil, 4);
 
   load_(path + "_floor.bmp", this->floor, 4);
