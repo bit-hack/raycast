@@ -1,7 +1,9 @@
+#define _CRT_SECURE_NO_WARNINGS
 #define _SDL_main_h
 #include <SDL/SDL.h>
 
 #include <array>
+#include <vector>
 
 
 struct app_t {
@@ -35,6 +37,67 @@ struct app_t {
 
   bool active = false;
 
+  std::vector<uint32_t*> textures;
+
+  void log_printf(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stdout, fmt, args);
+    fputs("\n", stdout);
+    va_end(args);
+  }
+
+  uint32_t *load_texture(const char *path) const {
+    uint32_t *dst = new uint32_t[64 * 64];
+    uint32_t *out = dst;
+    SDL_Surface *bmp = SDL_LoadBMP(path);
+    if (!bmp) {
+      return nullptr;
+    }
+    if (bmp->w != 64 || bmp->h != 64 || bmp->format->BitsPerPixel != 24) {
+      SDL_FreeSurface(bmp);
+      return nullptr;
+    }
+    const uint8_t *src = (const uint8_t *)bmp->pixels;
+    for (uint32_t y = 0; y < 64; ++y) {
+      for (uint32_t x = 0; x < 64; ++x) {
+        const uint32_t r = src[x * 3 + 2];
+        const uint32_t g = src[x * 3 + 1];
+        const uint32_t b = src[x * 3 + 0];
+        dst[x] = (r << 16) | (g << 8) | b;
+      }
+      src += 64 * 3;
+      dst += 64;
+    }
+    SDL_FreeSurface(bmp);
+    return out;
+  }
+
+  bool load_textures() {
+    FILE *f = fopen("data/textures.txt", "r");
+    if (!f) {
+      return true;
+    }
+    std::array<char, 256> temp;
+    while (!feof(f)) {
+      temp[0] = '\0';
+      if (!fgets(temp.data(), temp.size(), f)) {
+        break;
+      }
+      temp[255] = '\0';
+      temp[strcspn(temp.data(), "\n" )] = '\0';
+      uint32_t *tex = load_texture(temp.data());
+      if (tex) {
+        textures.push_back(tex);
+      }
+      else {
+        log_printf("error loading texture '%s'", temp.data());
+      }
+    }
+    fclose(f);
+    return true;
+  }
+
   app_t() {
     draw_plane = PLANE_FLOOR;
     write_mode = WRITE_PIXEL;
@@ -42,6 +105,8 @@ struct app_t {
     context = CONTEXT_MAP;
     highlight_value = -1;
     hover_value = -1;
+    level_filename = "unknown.map";
+    draw_toggle = false;
   }
 
   bool init() {
@@ -59,12 +124,13 @@ struct app_t {
     for (auto &p : plane) {
       p.fill(0);
     }
+    load_textures();
   }
 
-  void draw_sidebar() {
+  void draw_sidebar_greyscale() {
     const uint32_t w = sidebar_w / 2;
     SDL_Rect rect = {512, 0, w, 512 / 64};
-    for (int y=0; y<512; y += rect.h) {
+    for (int y = 0; y < 512; y += rect.h) {
       rect.x = 512;
       rect.y = y;
       const uint32_t t = ((y / rect.h) * 4);
@@ -86,7 +152,44 @@ struct app_t {
     }
   }
 
-  void draw() {
+  void draw_sidebar_texture() {
+    // texture selector
+    for (int i = 0; i < textures.size(); ++i) {
+      if ((i * 64) > (screen_h - 64)) {
+        break;
+      }
+      uint32_t *dst = (uint32_t*)surf->pixels;
+      dst += screen_w;
+      dst += (surf->pitch / 4) * i * 64;
+      uint32_t *src = textures[i];
+      for (int y = 0; y < 64; ++y) {
+        for (int x = 0; x < 64; ++x) {
+          dst[x] = src[x];
+        }
+        dst += (surf->pitch / 4);
+        src += 64;
+      }
+    }
+  }
+
+  void draw_sidebar() {
+    switch (draw_plane) {
+    case 0:
+    case 1:
+    case 2:
+      // greyscale selector
+      draw_sidebar_greyscale();
+      break;
+    case 3:
+    case 4:
+    case 5:
+      // texture selector
+      draw_sidebar_texture();
+      break;
+    }
+  }
+
+  void draw_map_greyscale() {
     const auto &p = plane[draw_plane];
     const uint8_t *src = p.data();
     SDL_Rect rect = {0, 0, cell_w, cell_h};
@@ -103,6 +206,77 @@ struct app_t {
         }
       }
       src += map_w;
+    }
+  }
+
+  void draw_map_texture() {
+    const auto &p = plane[draw_plane];
+    uint32_t *dst = (uint32_t*)surf->pixels;
+    for (int y = 0; y < screen_h; ++y) {
+      for (int x = 0; x < screen_w; ++x) {
+        const int cx = x / cell_w;
+        const int cy = y / cell_h;
+        const int ci = cx + cy * map_w;
+        const uint8_t val = p[ci];
+        if (val >= textures.size()) {
+          dst[x] = 0xff00ff;
+        }
+        else {
+          const uint32_t *tex = textures[val];
+          dst[x] = tex[(x & 0x3f) + (y & 0x3f) * 64];
+        }
+      }
+      dst += surf->pitch / 4;
+    }
+  }
+
+  void draw_map_combine() {
+    const auto &p = plane[draw_plane];
+    const auto &h = plane[0];
+
+    uint32_t *dst = (uint32_t*)surf->pixels;
+    for (int y = 0; y < screen_h; ++y) {
+      for (int x = 0; x < screen_w; ++x) {
+        const int cx = x / cell_w;
+        const int cy = y / cell_h;
+        const int ci = cx + cy * map_w;
+        const uint8_t val = p[ci];
+
+        if (x & 1) {
+          if (val >= textures.size()) {
+            dst[x] = 0xff00ff;
+          } else {
+            const uint32_t *tex = textures[val];
+            dst[x] = tex[(x & 0x3f) + (y & 0x3f) * 64];
+          }
+        }
+        else {
+          const uint8_t t = h[cx + cy * map_w];
+          const uint32_t rgb = (t << 16) | (t << 8) | t;
+          dst[x] = rgb;
+        }
+      }
+      dst += surf->pitch / 4;
+    }
+  }
+
+  void draw() {
+    switch (draw_plane) {
+    case 0:
+    case 1:
+    case 2:
+      draw_map_greyscale();
+      break;
+    case 3:
+    case 4:
+    case 5:
+      if (draw_toggle) {
+        draw_map_combine();
+      }
+      else {
+        draw_map_texture();
+      }
+      break;
     }
   }
 
@@ -153,37 +327,62 @@ struct app_t {
     return dst[x + y * map_w];
   }
 
-  void on_mouse_button_down(SDL_Event &event) {
-    if (event.button.state != SDL_PRESSED) {
-      return;
-    }
+  void on_mouse_button_down_map(SDL_Event &event) {
     const uint32_t x = (event.button.x / cell_w) & (map_w-1);
     const uint32_t y = (event.button.y / cell_h) & (map_h-1);
-    if (event.button.x < 512) {
-      // write value
-      if (event.button.button == SDL_BUTTON_LEFT) {
-        plane_write(draw_plane, x, y, write_value);
-      }
-      // sample value
-      if (event.button.button == SDL_BUTTON_RIGHT) {
-        write_value = plane_read(draw_plane, x, y);
-      }
+    // write value
+    if (event.button.button == SDL_BUTTON_LEFT) {
+      plane_write(draw_plane, x, y, write_value);
     }
-    if (event.button.x >= 512) {
+    // sample value
+    if (event.button.button == SDL_BUTTON_RIGHT) {
+      write_value = plane_read(draw_plane, x, y);
+      log_printf("write value: %d", (int)write_value);
+    }
+  }
+
+  void on_mouse_button_down_sidebar(SDL_Event &event) {
+    switch (draw_plane) {
+    case 0:
+    case 1:
+    case 2:
+      // greyscale selector
       if (event.button.button == SDL_BUTTON_LEFT) {
-        write_value = ((event.button.y / (512 / 64))) * 4;
+        write_value = sidebar_value(event.button.y);
+        log_printf("write value: %d", (int)write_value);
+      }
+      break;
+    case 3:
+    case 4:
+    case 5:
+      // texture selector
+      if (event.button.button == SDL_BUTTON_LEFT) {
+        write_value = event.button.y / 64;
+        log_printf("write value: %d", (int)write_value);
       }
     }
   }
 
+  void on_mouse_button_down(SDL_Event &event) {
+    if (event.button.state != SDL_PRESSED) {
+      return;
+    }
+    if (event.button.x < screen_w) {
+      on_mouse_button_down_map(event);
+    }
+    if (event.button.x >= screen_w) {
+      on_mouse_button_down_sidebar(event);
+    }
+  }
+
   uint32_t sidebar_value(int y) const {
-    return ((y / (512 / 64))) * 4;
+    return ((y / (screen_h / 64))) * 4;
   }
 
   void on_mouse_motion(SDL_Event &event) {
     const uint32_t x = (event.motion.x / cell_w) & (map_w-1);
     const uint32_t y = (event.motion.y / cell_h) & (map_h-1);
-    if (event.motion.x < 512) {
+    if (event.motion.x < screen_w) {
       if (event.motion.state & SDL_BUTTON_LMASK) {
         plane_write(draw_plane, x, y, write_value);
       }
@@ -195,6 +394,32 @@ struct app_t {
       context = CONTEXT_SIDEBAR;
       highlight_value = sidebar_value(event.motion.y);
     }
+  }
+
+  void on_load_level() {
+    log_printf("loading level '%s'", level_filename.c_str());
+    FILE *fd = fopen(level_filename.c_str(), "rb");
+    for (auto &p : plane) {
+      size_t read = fread(p.data(), 1, p.size(), fd);
+      if (read != p.size()) {
+        log_printf("error loading plane");
+        break;
+      }
+    }
+    fclose(fd);
+  }
+
+  void on_save_level() {
+    log_printf("saving level '%s'", level_filename.c_str());
+    FILE *fd = fopen(level_filename.c_str(), "wb");
+    for (auto &p : plane) {
+      size_t written = fwrite(p.data(), 1, p.size(), fd);
+      if (written != p.size()) {
+        log_printf("error writing plane");
+        break;
+      }
+    }
+    fclose(fd);
   }
 
   void on_key_down(SDL_Event &event) {
@@ -213,13 +438,26 @@ struct app_t {
       // set plane
       const uint32_t index = event.key.keysym.sym - SDLK_1;
       draw_plane = plane_t(PLANE_FLOOR + index);
+      log_printf("draw plane: %d", (int)draw_plane);
       break;
     }
     case SDLK_b:
+      log_printf("write mode: pixel");
       write_mode = WRITE_PIXEL;
       break;
     case SDLK_g:
+      log_printf("write mode: fill");
       write_mode = WRITE_FILL;
+      break;
+    case SDLK_F5:
+      on_save_level();
+      break;
+    case SDLK_F9:
+      on_load_level();
+      break;
+    case SDLK_TAB:
+      log_printf("draw mode toggle");
+      draw_toggle = !draw_toggle;
       break;
     }
   }
@@ -264,9 +502,14 @@ protected:
   write_t write_mode;
   uint8_t write_value;
 
-  // 
+  bool draw_toggle;
+
+  // current level filename
+  std::string level_filename;
+
+  // value on the sidebar the mouse is over
   int32_t highlight_value;
-  // 
+  // value on the map the mouse is over
   int32_t hover_value;
 
   context_t context;

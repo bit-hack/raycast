@@ -4,7 +4,7 @@
 #ifndef _MSC_VER
 #include <x86intrin.h>
 #else
-#include <xmmintrin.h>
+#include <immintrin.h>
 #endif
 
 #include "common.h"
