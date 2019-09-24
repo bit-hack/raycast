@@ -1,6 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define _SDL_main_h
-#include <SDL/SDL.h>
+#include "SDL.h"
 
 #include <array>
 #include <vector>
@@ -105,7 +105,7 @@ struct app_t {
     context = CONTEXT_MAP;
     highlight_value = -1;
     hover_value = -1;
-    level_filename = "unknown.map";
+    level_filename = "./data/map/e1m1.map";
     draw_toggle = false;
   }
 
@@ -133,9 +133,9 @@ struct app_t {
     for (int y = 0; y < 512; y += rect.h) {
       rect.x = 512;
       rect.y = y;
-      const uint32_t t = ((y / rect.h) * 4);
+      const uint32_t t = (y / rect.h);
       const uint32_t rgb0 = 0x5588AA;
-      const uint32_t rgb1 = (t << 16) | (t << 8) | t;
+      const uint32_t rgb1 = (t << 18) | (t << 10) | (t << 2);
       // value being written
       if (t == write_value) {
         SDL_FillRect(surf, &rect, rgb0);
@@ -154,7 +154,7 @@ struct app_t {
 
   void draw_sidebar_texture() {
     // texture selector
-    for (int i = 0; i < textures.size(); ++i) {
+    for (size_t i = 0; i < textures.size(); ++i) {
       if ((i * 64) > (screen_h - 64)) {
         break;
       }
@@ -196,7 +196,7 @@ struct app_t {
     for (int y = 0; y < map_h; ++y) {
       for (int x = 0; x < map_w; ++x) {
         const uint8_t t = src[x];
-        const uint32_t rgb = (t << 16) | (t << 8) | t;
+        const uint32_t rgb = (t << 18) | (t << 10) | (t << 2);
         rect.x = x * cell_w;
         rect.y = y * cell_h;
         if (context == CONTEXT_SIDEBAR) {
@@ -252,7 +252,7 @@ struct app_t {
         }
         else {
           const uint8_t t = h[cx + cy * map_w];
-          const uint32_t rgb = (t << 16) | (t << 8) | t;
+          const uint32_t rgb = (t << 18) | (t << 10) | (t << 2);
           dst[x] = rgb;
         }
       }
@@ -261,22 +261,22 @@ struct app_t {
   }
 
   void draw() {
-    switch (draw_plane) {
-    case 0:
-    case 1:
-    case 2:
-      draw_map_greyscale();
-      break;
-    case 3:
-    case 4:
-    case 5:
-      if (draw_toggle) {
-        draw_map_combine();
-      }
-      else {
+    if (draw_toggle) {
+      draw_map_combine();
+    }
+    else {
+      switch (draw_plane) {
+      case 0:
+      case 1:
+      case 2:
+        draw_map_greyscale();
+        break;
+      case 3:
+      case 4:
+      case 5:
         draw_map_texture();
+        break;
       }
-      break;
     }
   }
 
@@ -376,7 +376,7 @@ struct app_t {
   }
 
   uint32_t sidebar_value(int y) const {
-    return ((y / (screen_h / 64))) * 4;
+    return ((y / (screen_h / 64)));
   }
 
   void on_mouse_motion(SDL_Event &event) {
@@ -399,6 +399,10 @@ struct app_t {
   void on_load_level() {
     log_printf("loading level '%s'", level_filename.c_str());
     FILE *fd = fopen(level_filename.c_str(), "rb");
+    if (!fd) {
+      log_printf("unable to fopen file");
+      return;
+    }
     for (auto &p : plane) {
       size_t read = fread(p.data(), 1, p.size(), fd);
       if (read != p.size()) {
@@ -412,6 +416,10 @@ struct app_t {
   void on_save_level() {
     log_printf("saving level '%s'", level_filename.c_str());
     FILE *fd = fopen(level_filename.c_str(), "wb");
+    if (!fd) {
+      log_printf("unable to fopen file");
+      return;
+    }
     for (auto &p : plane) {
       size_t written = fwrite(p.data(), 1, p.size(), fd);
       if (written != p.size()) {
@@ -420,6 +428,18 @@ struct app_t {
       }
     }
     fclose(fd);
+  }
+
+  char *draw_plane_name() {
+    switch (draw_plane) {
+    case 0:  return "floor";
+    case 1:  return "ceil";
+    case 2:  return "light";
+    case 3:  return "tex floor";
+    case 4:  return "tex ceil";
+    case 5:  return "tex wall";
+    default: return "";
+    }
   }
 
   void on_key_down(SDL_Event &event) {
@@ -438,7 +458,7 @@ struct app_t {
       // set plane
       const uint32_t index = event.key.keysym.sym - SDLK_1;
       draw_plane = plane_t(PLANE_FLOOR + index);
-      log_printf("draw plane: %d", (int)draw_plane);
+      log_printf("draw plane: %s", draw_plane_name());
       break;
     }
     case SDLK_b:
@@ -456,13 +476,22 @@ struct app_t {
       on_load_level();
       break;
     case SDLK_TAB:
-      log_printf("draw mode toggle");
       draw_toggle = !draw_toggle;
+      log_printf("draw mode toggle %s", draw_toggle ? "on" : "off");
+      break;
+    case SDLK_UP:
+      write_value -= (write_value > 0);
+      break;
+    case SDLK_DOWN:
+      write_value += (write_value < 63);
       break;
     }
   }
 
   int main(const int argc, char **args) {
+    if (argc >= 2) {
+      level_filename = args[1];
+    }
     if (!init()) {
       return 1;
     }

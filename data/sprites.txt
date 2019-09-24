@@ -1,2 +1,3 @@
 ./data/things/test.bmp
 ./data/sky/sky.bmp
+./data/weapons/pistol.bmp

@@ -1,19 +1,31 @@
 #pragma once
+#include <array>
 #include <vector>
 
 #include "vector.h"
 #include "sprites.h"
 #include "common.h"
 
+const float gravity = 0.1f;
+const float damping = 0.9f;
+
 enum thing_type_t {
-  PLAYER,
   IMP,
   FIREBALL,
+
+  PLAYER,
+  _NUM_THINGS_
 };
 
 struct thing_t {
 
-  thing_t(thing_type_t t);
+  thing_t(thing_type_t t)
+    : type(t)
+    , pos(vec3f_t{0.f, 0.f, 0.f})
+    , acc(vec3f_t{0.f, 0.f, 0.f})
+    , dir(0.f)
+  {
+  }
 
   virtual void tick() {};
   virtual void on_create() {};
@@ -22,7 +34,9 @@ struct thing_t {
 
   vec3f_t pos;
   vec3f_t acc;
-  vec2f_t dir;
+  float   dir;
+  float   eyeLevel;
+  float   viewBob;
 };
 
 struct thing_manager_t {
@@ -31,7 +45,12 @@ struct thing_manager_t {
 
   thing_t *create(thing_type_t type);
 
-  std::vector<thing_t*> things;
+  std::vector<thing_t *> &get_things(thing_type_t type) {
+    return things[type];
+  }
+
+protected:
+  std::array<std::vector<thing_t*>, _NUM_THINGS_> things;
 };
 
 struct thing_player_t: public thing_t {
@@ -39,6 +58,12 @@ struct thing_player_t: public thing_t {
   thing_player_t()
     : thing_t(PLAYER)
   {}
+
+  void on_create() override;
+  void tick() override;
+
+protected:
+  void do_movement();
 };
 
 struct thing_imp_t: public thing_t {

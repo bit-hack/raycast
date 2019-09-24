@@ -7,8 +7,8 @@
 #include "vector.h"
 
 enum {
-  map_w = 128,
-  map_h = 128
+  map_w = 64,
+  map_h = 64
 };
 
 
@@ -45,8 +45,6 @@ struct map_t {
   void resolve(const vec3f_t &p, const float r, vec2f_t &res) const;
 
 protected:
-
-  bool load_(const std::string &path, std::array<uint8_t, map_w*map_h> &out, uint32_t scale) const;
 
   // blocker flags
   std::array<uint8_t, map_w * map_h> blockers;

@@ -18,6 +18,7 @@ bool sprite_t::load(const char *path) {
 
   w = bmp->w;
   h = bmp->h;
+  frame_h = h;
   data.reset(new uint32_t[w * h]);
 
   const uint8_t *src = (const uint8_t *)bmp->pixels;
@@ -42,7 +43,13 @@ bool sprite_t::load(const char *path) {
   return true;
 }
 
-void draw_sprite(sprite_t &s, const vec3f_t &pos, const float height, const uint8_t light) {
+void draw_sprite(
+    sprite_t &s,
+    const vec3f_t &pos,
+    const float height,
+    const uint8_t light,
+    const int32_t frame) {
+
   vec2f_t p;
   const float dist = project(pos, p);
   if (dist <= .5f) {
@@ -101,6 +108,32 @@ void draw_sprite(sprite_t &s, const vec3f_t &pos, const float height, const uint
   }
 }
 
+
+void draw_sprite(
+  sprite_t &s,
+  const vec2f_t &p,
+  const uint8_t light,
+  const int32_t frame) {
+
+  const int32_t minx = p.x;
+  const int32_t miny = p.y;
+  const int32_t maxx = SDL_min(screen_w, p.x + s.w);
+  const int32_t maxy = SDL_min(screen_h, p.y + s.frame_h);
+
+  const uint32_t *src = s.data.get();
+  src += s.w * s.frame_h * frame;
+
+//  uint32_t *dst = screen + minx;
+
+  for (int y = miny; y < maxy; ++y) {
+    for (int x = minx; x < maxx; ++x) {
+
+    }
+
+    src += s.w;
+  }
+}
+
 bool load_sprites() {
   FILE *f = fopen("data/sprites.txt", "r");
   if (!f) {
@@ -118,5 +151,11 @@ bool load_sprites() {
       // oh dear
     }
   }
+  fclose(f);
+
+  // pistol frame height
+  sprites[2].frame_h = 168;
+
+
   return true;
 }

@@ -112,5 +112,6 @@ bool load_textures() {
       // oh dear
     }
   }
+  fclose(f);
   return true;
 }

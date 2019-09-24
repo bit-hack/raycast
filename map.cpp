@@ -75,48 +75,42 @@ void map_t::resolve(const vec3f_t &p, const float r, vec2f_t &res) const {
 
 void map_t::load(const std::string &path) {
 
+  floor.fill(0);
+  floor.fill(10);
+  light.fill(0xff);
   tex_wall.fill(0);
   tex_floor.fill(1);
   tex_ceil.fill(11);
 
-  floor.fill(0);
-  floor.fill(10);
-  light.fill(0xff);
+  FILE *fd = fopen(path.c_str(), "rb");
+  if (!fd) {
+    return;
+  }
 
-  load_(path + "_tex_wall.bmp", this->tex_wall, 4);
-  load_(path + "_tex_floor.bmp", this->tex_floor, 4);
-  load_(path + "_tex_ceil.bmp", this->tex_ceil, 4);
+  if (fread(floor.data(), 1, floor.size(), fd) != floor.size()) {
+    // error
+  }
+  if (fread(ceil.data(), 1, ceil.size(), fd) != ceil.size()) {
+    // error
+  }
+  if (fread(light.data(), 1, light.size(), fd) != light.size()) {
+    // error
+  }
+  if (fread(tex_floor.data(), 1, light.size(), fd) != tex_floor.size()) {
+    // error
+  }
+  if (fread(tex_ceil.data(), 1, light.size(), fd) != tex_ceil.size()) {
+    // error
+  }
+  if (fread(tex_wall.data(), 1, light.size(), fd) != tex_wall.size()) {
+    // error
+  }
+  fclose(fd);
 
-  load_(path + "_floor.bmp", this->floor, 4);
-  load_(path + "_ceil.bmp", this->ceil, 4);
-  load_(path + "_light.bmp", this->light, 1);
+  // scale lights up into 256 value range
+  for (auto &l : light) {
+    l *= 4;
+  }
 
   calcBlockers();
-}
-
-bool map_t::load_(const std::string &path, std::array<uint8_t, map_w*map_h> &out, uint32_t scale) const {
-
-  SDL_Surface *map = SDL_LoadBMP(path.c_str());
-  if (!map) {
-    return false;
-  }
-
-  if (map->format->BitsPerPixel != 8) {
-    SDL_FreeSurface(map);
-    return false;
-  }
-
-  const uint8_t *src = (const uint8_t*)map->pixels;
-
-  uint8_t *dst = out.data();
-  for (int y = 0; y < map_h; ++y) {
-    for (int x = 0; x < map_w; ++x) {
-      dst[x] = src[x] / scale;
-    }
-    src += map->pitch;
-    dst += map_w;
-  }
-
-  SDL_FreeSurface(map);
-  return true;
 }

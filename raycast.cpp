@@ -23,7 +23,7 @@ static void draw_sky(
 
   const float pi = 3.14159265359f;
 
-  const float a = 512.f * ((atan2f(fy, fx) - player_dir) / pi);
+  const float a = 512.f * ((atan2f(fy, fx) - player_angle()) / pi);
   const uint32_t o = int32_t(a) & 0x1ff;
 
   const int32_t drawStart = int32_t(SDL_max(y0, maxy));
