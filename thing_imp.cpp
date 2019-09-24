@@ -64,7 +64,7 @@ void thing_imp_t::tick() {
 
   vec2f_t p;
   if (project(vec3f_t{target.x, target.y, pos.z}, p) > 0) {
-    plot(int(p.x), int(p.y), 0xFFFFFF);
+//    plot(int(p.x), int(p.y), 0xFFFFFF);
   }
 }
 

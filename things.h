@@ -64,8 +64,7 @@ struct thing_player_t: public thing_t {
   float viewBob;
   float gunBob;
   float accMag;
-
-  int32_t gun_frame;
+  float gunFrame;
 
 protected:
   void draw_gun();

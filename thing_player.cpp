@@ -9,8 +9,10 @@ const float rotSpeed  = 2.7f / ticks_per_sec;
 const uint32_t num_gun_frames = 4;
 
 void thing_player_t::on_create() {
-  eyeLevel = 3.f;
+  eyeLevel = 32.f;
   viewBob = 0.f;
+  accMag = 0.f;
+  gunFrame = 0.f;
 }
 
 void thing_player_t::tick() {
@@ -27,12 +29,12 @@ void thing_player_t::tick() {
   }
 
   // acceleration magnitude
-  const float accMag = std::min(1.f, sqrtf(vec3f_t::dot(acc, acc)));
+  accMag = std::min(1.f, sqrtf(vec3f_t::dot(acc, acc)));
 
   // kick off a shot
-  if (gun_frame == 0) {
+  if (gunFrame == 0.f) {
     if (keys[SDLK_LCTRL]) {
-      gun_frame = ticks_per_sec / num_gun_frames;
+      gunFrame = 1.f;
     }
   }
 
@@ -43,11 +45,11 @@ void thing_player_t::tick() {
 void thing_player_t::draw_gun() {
 
   // if animation has started then run it
-  gun_frame += (gun_frame > 0);
-  if (gun_frame >= ticks_per_sec) {
-    gun_frame = 0;
+  gunFrame += (gunFrame > 0.f) ? 0.3f : 0.f;
+  if (gunFrame >= num_gun_frames) {
+    gunFrame = 0.f;
   }
-  const uint32_t frame = (gun_frame * num_gun_frames) / ticks_per_sec;
+  const uint32_t frame = uint32_t(gunFrame);
 
   // draw weapon
   const float wx =       sinf(viewBob)  * accMag * 64.f;

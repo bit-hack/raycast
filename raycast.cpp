@@ -163,6 +163,7 @@ static void draw_floor(
   const uint8_t light,
   const texture_t &texture)
 {
+//  const int32_t drawStart = SDL_max(int32_t(y0), int32_t(maxy));
   const int32_t drawStart = int32_t(SDL_max(y0, maxy));
   const int32_t drawEnd   = SDL_min(int32_t(SDL_min(miny, y1)), screen_h - 1);
   if (drawStart >= drawEnd) {
