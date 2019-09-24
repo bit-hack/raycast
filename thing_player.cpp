@@ -6,13 +6,54 @@
 const float moveSpeed = 0.5f / ticks_per_sec;
 const float rotSpeed  = 2.7f / ticks_per_sec;
 
+const uint32_t num_gun_frames = 4;
+
 void thing_player_t::on_create() {
   eyeLevel = 3.f;
   viewBob = 0.f;
 }
 
 void thing_player_t::tick() {
+
+  const uint8_t *keys = SDL_GetKeyState(nullptr);
+
+  // update viewbob accumulator
+  {
+    const float pi = 3.14159265359f;
+    viewBob += 2.f * pi / ticks_per_sec;
+    if (viewBob > 2.f * pi) {
+      viewBob -= 2.f * pi;
+    }
+  }
+
+  // acceleration magnitude
+  const float accMag = std::min(1.f, sqrtf(vec3f_t::dot(acc, acc)));
+
+  // kick off a shot
+  if (gun_frame == 0) {
+    if (keys[SDLK_LCTRL]) {
+      gun_frame = ticks_per_sec / num_gun_frames;
+    }
+  }
+
   do_movement();
+  draw_gun();
+}
+
+void thing_player_t::draw_gun() {
+
+  // if animation has started then run it
+  gun_frame += (gun_frame > 0);
+  if (gun_frame >= ticks_per_sec) {
+    gun_frame = 0;
+  }
+  const uint32_t frame = (gun_frame * num_gun_frames) / ticks_per_sec;
+
+  // draw weapon
+  const float wx =       sinf(viewBob)  * accMag * 64.f;
+  const float wy = fabsf(cosf(viewBob)) * accMag * 64.f;
+  const uint8_t light = service.map->getLight(float(pos.x), float(pos.y));
+  draw_sprite(sprites[2], vec2f_t{148 + wx, 90 + wy}, light, frame);
 }
 
 void thing_player_t::do_movement() {
@@ -89,18 +130,9 @@ void thing_player_t::do_movement() {
 
   // lerp the eye level so it doesn't pop
   {
-    const float pi = 3.14159265359f;
-    viewBob += 2.f * pi / ticks_per_sec;
-    if (viewBob > 2.f * pi) {
-      viewBob -= 2.f * pi;
-    }
-    float acc_mag = sqrtf(vec3f_t::dot(acc, acc)) * 2.25f;
-    float bob = sinf(viewBob) * acc_mag;
+    const float bob = sinf(viewBob) * accMag * 2.25f;
     eyeLevel += 0.2f * ((pos.z + bob + 3.f) - eyeLevel);
   }
-
-  // 
-  draw_sprite(sprites[2], vec2f_t{0, 0}, 255, 0);
 }
 
 thing_t *thing_create_player() {

@@ -430,7 +430,7 @@ struct app_t {
     fclose(fd);
   }
 
-  char *draw_plane_name() {
+  const char *draw_plane_name() {
     switch (draw_plane) {
     case 0:  return "floor";
     case 1:  return "ceil";

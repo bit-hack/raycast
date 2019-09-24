@@ -35,8 +35,6 @@ struct thing_t {
   vec3f_t pos;
   vec3f_t acc;
   float   dir;
-  float   eyeLevel;
-  float   viewBob;
 };
 
 struct thing_manager_t {
@@ -62,7 +60,15 @@ struct thing_player_t: public thing_t {
   void on_create() override;
   void tick() override;
 
+  float eyeLevel;
+  float viewBob;
+  float gunBob;
+  float accMag;
+
+  int32_t gun_frame;
+
 protected:
+  void draw_gun();
   void do_movement();
 };
 

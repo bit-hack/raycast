@@ -108,29 +108,51 @@ void draw_sprite(
   }
 }
 
-
 void draw_sprite(
   sprite_t &s,
   const vec2f_t &p,
   const uint8_t light,
   const int32_t frame) {
 
-  const int32_t minx = p.x;
-  const int32_t miny = p.y;
+  int32_t minx = p.x;
+  int32_t miny = p.y;
   const int32_t maxx = SDL_min(screen_w, p.x + s.w);
   const int32_t maxy = SDL_min(screen_h, p.y + s.frame_h);
 
+  const int32_t nudgex = minx < 0 ? -minx : 0;
+  const int32_t nudgey = miny < 0 ? -miny : 0;
+
+  minx += nudgex;
+  miny += nudgey;
+
   const uint32_t *src = s.data.get();
   src += s.w * s.frame_h * frame;
+  src += nudgex;
+  src += nudgey * s.w;
 
-//  uint32_t *dst = screen + minx;
+  // frame buffer planes
+  uint32_t *dst = screen.data();
+  dst += miny * screen_w;
+  uint16_t *dth = depth.data();
+  dth += miny * screen_w;
+  uint8_t *lit = lightmap.data();
+  lit += miny * screen_w;
 
   for (int y = miny; y < maxy; ++y) {
+    const uint32_t *srcx = src;
     for (int x = minx; x < maxx; ++x) {
-
+      const uint32_t rgb = *srcx;
+      if ((rgb & 0xff000000) == 0) {
+        dst[x] = rgb;
+        dth[x] = 0;
+      }
+      ++srcx;
     }
-
     src += s.w;
+
+    dst += screen_w;
+    lit += screen_w;
+    dth += screen_w;
   }
 }
 
@@ -155,7 +177,6 @@ bool load_sprites() {
 
   // pistol frame height
   sprites[2].frame_h = 168;
-
 
   return true;
 }
