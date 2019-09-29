@@ -106,13 +106,13 @@ void tick(void) {
   //
   service.spatial->draw();
 
-  vec2f_t hit;
+  vec3f_t hit;
   thing_t *thing;
   const vec2f_t &dir = player_dir();
   service.spatial->hitscan(pos.x, pos.y, dir.x, dir.y, hit, thing);
   if (thing) {
     vec2f_t out;
-    project(thing->pos, out);
+    project(hit, out);
     plot(out.x + 2, out.y + 0, 0xFF00FF);
     plot(out.x + 0, out.y + 2, 0xFF00FF);
     plot(out.x - 2, out.y + 0, 0xFF00FF);

@@ -105,7 +105,7 @@ bool thing_imp_t::screen_aabb(vec2f_t &min, vec2f_t &max) const {
 
   vec2f_t p;
   const float dist = project(pos, p);
-  if (dist <= .5f) {
+  if (dist <= .15f) {
     // behind camera so dont render
     return false;
   }
