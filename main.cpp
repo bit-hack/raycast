@@ -15,6 +15,7 @@
 #include "vector.h"
 #include "things.h"
 #include "pfields.h"
+#include "spatial.h"
 
 service_t service;
 const float near_plane_scale = .66f;
@@ -81,9 +82,17 @@ void draw_pfield() {
   }
 }
 
+void do_collisions(void) {
+  std::set<std::pair<thing_t*, thing_t*>> pairs;
+  service.spatial->overlaps(pairs);
+  for (auto &p : pairs) {
+
+  }
+}
+
 void tick(void) {
   // set player pfield
-  const vec3f_t &pos = player_pos();
+  const vec3f_t pos = player_pos();
   service.pfield->set(
     int32_t(pos.x),
     int32_t(pos.y), 0x75);
@@ -92,6 +101,24 @@ void tick(void) {
   redraw();
   // update all entities
   service.things->tick();
+  // resolve collisions
+  do_collisions();
+  //
+  service.spatial->draw();
+
+  vec2f_t hit;
+  thing_t *thing;
+  const vec2f_t &dir = player_dir();
+  service.spatial->hitscan(pos.x, pos.y, dir.x, dir.y, hit, thing);
+  if (thing) {
+    vec2f_t out;
+    project(thing->pos, out);
+    plot(out.x + 2, out.y + 0, 0xFF00FF);
+    plot(out.x + 0, out.y + 2, 0xFF00FF);
+    plot(out.x - 2, out.y + 0, 0xFF00FF);
+    plot(out.x + 0, out.y - 2, 0xFF00FF);
+  }
+
   // present the screen
   present_screen_sse(surf);
   SDL_Flip(surf);
@@ -119,6 +146,7 @@ int main(int argc, char *args[]) {
   service.map = &map;
   service.things = &things;
   service.pfield = new pfield_t(map);
+  service.spatial = new spatial_t(map);
 
   thing_t *t = service.things->create(IMP);
   t->pos = vec3f_t{33.2f, 34.8f, 16};
@@ -129,7 +157,8 @@ int main(int argc, char *args[]) {
   thing_t *p = service.things->create(PLAYER);
   p->pos = vec3f_t{32.f, 32.f};
 
-  surf = SDL_SetVideoMode(screen_w * 2, screen_h * 2, 32, 0);
+  bool fullscreen = false;
+  surf = SDL_SetVideoMode(screen_w * 2, screen_h * 2, 32, fullscreen ? SDL_FULLSCREEN : 0);
   if (!surf) {
     return 2;
   }

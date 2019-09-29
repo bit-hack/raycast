@@ -360,7 +360,7 @@ void raycast(
   float rx, float ry) {
 
   // which grid cell we are in
-  vec2i_t cell = {int32_t(vx), int32_t(vy)};
+  vec2i_t cell = { int32_t(vx), int32_t(vy) };
 
   // length between axis strides
   vec2f_t delta = { fabsf(1.f / rx), fabsf(1.f / ry) };

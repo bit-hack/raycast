@@ -61,7 +61,7 @@ void draw_sprite(
   const uint16_t d = uint16_t(dist * 256);
 
   const float y2 = p.y;
-  const float y1 = project(pos.z + height, dist);
+  const float y1 = project(pos.z + height, dist, y2);
   const float dy = y1 - y2;
 
   const float dx = (dy * s.w) / s.h;

@@ -54,7 +54,7 @@ void thing_player_t::draw_gun() {
   // draw weapon
   const float wx =       sinf(viewBob)  * accMag * 64.f;
   const float wy = fabsf(cosf(viewBob)) * accMag * 64.f;
-  const uint8_t light = service.map->getLight(float(pos.x), float(pos.y));
+  const uint8_t light = service.map->getLight(int32_t(pos.x), int32_t(pos.y));
   draw_sprite(sprites[2], vec2f_t{148 + wx, 90 + wy}, light, frame);
 }
 
@@ -78,9 +78,7 @@ void thing_player_t::do_movement() {
   const vec2f_t dirVec = {sinf(dir), cosf(dir)};
 
   // integrate player position
-  pos.x += acc.x;
-  pos.y += acc.y;
-
+  vec3f_t new_pos = pos + acc;
   // dampen
   acc.x *= 0.9f;
   acc.y *= 0.9f;
@@ -115,26 +113,28 @@ void thing_player_t::do_movement() {
   // resolve player collisions
   {
     vec2f_t res = {0.f, 0.f};
-    map.resolve(pos, .3f, res);
-    pos.x += res.x * .5f;
-    pos.y += res.y * .5f;
+    map.resolve(new_pos, .3f, res);
+    new_pos.x += res.x * .5f;
+    new_pos.y += res.y * .5f;
   }
 
   // do gravity and floor collision checking
   const float fl = float(map.getHeight(int(pos.x), int(pos.y)));
-  if (pos.z <= fl) {
-    pos.z = fl;
+  if (new_pos.z <= fl) {
+    new_pos.z = fl;
     acc.z = 0.f;
   } else {
     acc.z -= 0.1f;
-    pos.z += acc.z;
   }
 
   // lerp the eye level so it doesn't pop
   {
     const float bob = sinf(viewBob) * accMag * 2.25f;
-    eyeLevel += 0.2f * ((pos.z + bob + 3.f) - eyeLevel);
+    eyeLevel += 0.2f * ((pos.z + bob + height) - eyeLevel);
   }
+
+  // move to new location
+  move(new_pos);
 }
 
 thing_t *thing_create_player() {
