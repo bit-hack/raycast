@@ -38,6 +38,15 @@ void thing_imp_t::replan() {
   }
 }
 
+void thing_imp_t::on_damage(
+  const vec3f_t &src,
+  const vec3f_t &hit,
+  float damage) {
+
+  const vec3f_t d = normal(src - pos);
+  acc = acc - d * damage;
+}
+
 void thing_imp_t::tick() {
 
   {
@@ -81,7 +90,7 @@ void thing_imp_t::tick() {
     plot(int(p.x), int(p.y), 0xFFFFFF);
   }
 #endif
-
+#if 0
   {
     vec2f_t min, max;
     if (screen_aabb(min, max)) {
@@ -91,6 +100,7 @@ void thing_imp_t::tick() {
       plot(max.x, max.y, 0xFFFFFF);
     }
   }
+#endif
 }
 
 thing_t *thing_create_imp() {

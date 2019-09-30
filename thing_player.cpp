@@ -1,6 +1,8 @@
+#include "common.h"
 #include "map.h"
 #include "things.h"
 #include "pfields.h"
+#include "spatial.h"
 
 // speed modifiers
 const float moveSpeed = 0.5f / ticks_per_sec;
@@ -13,6 +15,29 @@ void thing_player_t::on_create() {
   viewBob = 0.f;
   accMag = 0.f;
   gunFrame = 0.f;
+}
+
+void thing_player_t::do_shoot() {
+
+  vec3f_t hit;
+  thing_t *thing = nullptr;
+  const vec2f_t &dir = player_dir();
+  service.spatial->hitscan(pos.x, pos.y, dir.x, dir.y, hit, thing);
+  if (thing) {
+
+    thing->on_damage(pos, hit, .1f);
+
+    vec2f_t out;
+    project(hit, out);
+    for (int y = out.y - 4; y < out.y + 4; ++y) {
+      for (int x = out.x - 4; x < out.x + 4; ++x) {
+        if ((x ^ y) & 1) {
+          plot(x, y, 0xFF00FF);
+        }
+      }
+    }
+  }
+
 }
 
 void thing_player_t::tick() {
@@ -34,6 +59,7 @@ void thing_player_t::tick() {
   // kick off a shot
   if (gunFrame == 0.f) {
     if (keys[SDLK_LCTRL]) {
+      do_shoot();
       gunFrame = 1.f;
     }
   }

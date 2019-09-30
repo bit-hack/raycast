@@ -87,3 +87,13 @@ using vec2i_t = vec2_t<int32_t>;
 
 using vec3f_t = vec3_t<float>;
 using vec3i_t = vec3_t<int32_t>;
+
+inline vec2f_t normal(const vec2f_t &v) {
+  const float d = 1.f / sqrtf(vec2f_t::dot(v, v));
+  return vec2f_t{v.x * d, v.y * d};
+}
+
+inline vec3f_t normal(const vec3f_t &v) {
+  const float d = 1.f / sqrtf(vec3f_t::dot(v, v));
+  return vec3f_t{v.x * d, v.y * d, v.z * d};
+}

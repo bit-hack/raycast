@@ -104,24 +104,7 @@ void tick(void) {
   // resolve collisions
   do_collisions();
   //
-  service.spatial->draw();
-
-  vec3f_t hit;
-  thing_t *thing;
-  const vec2f_t &dir = player_dir();
-  service.spatial->hitscan(pos.x, pos.y, dir.x, dir.y, hit, thing);
-  if (thing) {
-    vec2f_t out;
-    project(hit, out);
-
-    for (int y = out.y - 8; y < out.y + 1; ++y) {
-      for (int x = out.x - 8; x < out.x + 1; ++x) {
-        if ((x ^ y) & 1) {
-          plot(x, y, 0xFF00FF);
-        }
-      }
-    }
-  }
+//  service.spatial->draw();
 
   // present the screen
   present_screen_sse(surf);

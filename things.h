@@ -31,6 +31,10 @@ struct thing_t {
 
   virtual void tick() {};
   virtual void on_create() {};
+  virtual void on_damage(
+    const vec3f_t &src,
+    const vec3f_t &pos,
+    float damage) {};
 
   void move(const vec3f_t &p);
 
@@ -79,6 +83,7 @@ struct thing_player_t: public thing_t {
 protected:
   void draw_gun();
   void do_movement();
+  void do_shoot();
 };
 
 struct thing_imp_t: public thing_t {
@@ -94,6 +99,11 @@ struct thing_imp_t: public thing_t {
 
   void on_create() override;
   void tick() override;
+
+  virtual void on_damage(
+    const vec3f_t &src,
+    const vec3f_t &hit,
+    float damage);
 
 protected:
   void replan();
