@@ -113,10 +113,14 @@ void tick(void) {
   if (thing) {
     vec2f_t out;
     project(hit, out);
-    plot(out.x + 2, out.y + 0, 0xFF00FF);
-    plot(out.x + 0, out.y + 2, 0xFF00FF);
-    plot(out.x - 2, out.y + 0, 0xFF00FF);
-    plot(out.x + 0, out.y - 2, 0xFF00FF);
+
+    for (int y = out.y - 8; y < out.y + 1; ++y) {
+      for (int x = out.x - 8; x < out.x + 1; ++x) {
+        if ((x ^ y) & 1) {
+          plot(x, y, 0xFF00FF);
+        }
+      }
+    }
   }
 
   // present the screen
