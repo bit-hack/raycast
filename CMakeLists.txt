@@ -14,13 +14,17 @@ if (NOT UNIX)
   # We do this check to see if we have a 32-bit or 64-bit compiler. We can then
   # grab the correct SDL lib.
   if("${CMAKE_SIZEOF_VOID_P}" STREQUAL "4")
-    install (FILES ${SDL_INCLUDE_DIR}/../lib/x86/SDL.dll DESTINATION bin)
-    configure_file(${SDL_INCLUDE_DIR}/../lib/x86/SDL.dll 
-      ${PROJECT_BINARY_DIR}/SDL.dll COPYONLY)
+    if (EXISTS "${SDL_INCLUDE_DIR}/../lib/x86/SDL.dll")
+      install (FILES ${SDL_INCLUDE_DIR}/../lib/x86/SDL.dll DESTINATION bin)
+      configure_file(${SDL_INCLUDE_DIR}/../lib/x86/SDL.dll 
+        ${PROJECT_BINARY_DIR}/SDL.dll COPYONLY)
+    endif()
   else()
-    install (FILES ${SDL_INCLUDE_DIR}/../lib/x64/SDL.dll DESTINATION bin)
-    configure_file(${SDL_INCLUDE_DIR}/../lib/x64/SDL.dll 
-      ${PROJECT_BINARY_DIR}/SDL.dll COPYONLY)
+    if (EXISTS "${SDL_INCLUDE_DIR}/../lib/x64/SDL.dll")
+      install (FILES ${SDL_INCLUDE_DIR}/../lib/x64/SDL.dll DESTINATION bin)
+      configure_file(${SDL_INCLUDE_DIR}/../lib/x64/SDL.dll 
+        ${PROJECT_BINARY_DIR}/SDL.dll COPYONLY)
+    endif()
   endif()
 else()
   set(CMAKE_C_FLAGS "-march=nehalem")

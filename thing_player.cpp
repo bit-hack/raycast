@@ -10,6 +10,8 @@ const float rotSpeed  = 2.7f / ticks_per_sec;
 
 const uint32_t num_gun_frames = 4;
 
+#define USE_MOUSE 0
+
 void thing_player_t::on_create() {
   eyeLevel = 32.f;
   viewBob = 0.f;
@@ -56,9 +58,16 @@ void thing_player_t::tick() {
   // acceleration magnitude
   accMag = std::min(1.f, sqrtf(vec3f_t::dot(acc, acc)));
 
+#if USE_MOUSE
+  int buttons = SDL_GetMouseState(nullptr, nullptr);
+  bool shooting = keys[SDLK_LCTRL] || (buttons & SDL_BUTTON_LMASK);
+#else
+  bool shooting = keys[SDLK_LCTRL];
+#endif
+
   // kick off a shot
   if (gunFrame == 0.f) {
-    if (keys[SDLK_LCTRL]) {
+    if (shooting) {
       do_shoot();
       gunFrame = 1.f;
     }
@@ -86,7 +95,7 @@ void thing_player_t::draw_gun() {
 
 void thing_player_t::do_movement() {
 
-#if 0
+#if USE_MOUSE
   {
     SDL_ShowCursor(SDL_DISABLE);
 
