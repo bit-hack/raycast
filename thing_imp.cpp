@@ -45,6 +45,8 @@ void thing_imp_t::on_damage(
 
   const vec3f_t d = normal(src - pos);
   acc = acc - d * damage;
+
+  service.particles->spawn(hit, SPRITE_GORE, rand(), 9);
 }
 
 void thing_imp_t::tick() {
@@ -109,7 +111,7 @@ thing_t *thing_create_imp() {
 
 bool thing_imp_t::screen_aabb(vec2f_t &min, vec2f_t &max) const {
 
-  sprite_t &s = sprites[0];
+  sprite_t &s = sprites[SPRITE_IMP];
 
   // XXX: code mirrored from sprite draw
 

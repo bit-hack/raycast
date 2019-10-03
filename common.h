@@ -7,6 +7,7 @@
 
 #include "texture.h"
 #include "vector.h"
+#include "particles.h"
 
 
 extern std::array<texture_t, 16> texture;
@@ -98,6 +99,7 @@ struct service_t {
   struct thing_manager_t *things;
   struct pfield_t *pfield;
   struct spatial_t *spatial;
+  struct particle_manager_t *particles;
 };
 
 extern service_t service;

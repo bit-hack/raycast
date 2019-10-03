@@ -32,7 +32,7 @@ bool sprite_t::load(const char *path) {
 
       const uint32_t rgb = (r << 16) | (g << 8) | b;
 
-      dst[x] = (rgb == key ? 0xff000000 : rgb);
+      dst[x] = ((rgb == key) ? 0xff000000 : rgb);
     }
     src += bmp->pitch;
     dst += w;
@@ -64,7 +64,7 @@ void draw_sprite(
   const float y1 = project(pos.z + height, dist, y2);
   const float dy = y1 - y2;
 
-  const float dx = (dy * s.w) / s.h;
+  const float dx = (dy * s.w) / s.frame_h;
 
   const vec2f_t box_min{p.x + dx / 2, y1};
   const vec2f_t box_max{p.x - dx / 2, y2};
@@ -74,13 +74,14 @@ void draw_sprite(
   const vec2i_t max{std::min<int32_t>(screen_w, int32_t(box_max.x)),
                     std::min<int32_t>(screen_h, int32_t(box_max.y))};
 
-  const float sx = float(s.w) / (box_max.x - box_min.x);
-  const float sy = float(s.h) / (box_max.y - box_min.y);
+  const float sx = float(s.w)       / (box_max.x - box_min.x);
+  const float sy = float(s.frame_h) / (box_max.y - box_min.y);
 
   float tx = (box_min.x < 0) ? sx * -box_min.x : 0.f;
   float ty = (box_min.y < 0) ? sy * -box_min.y : 0.f;
 
   const uint32_t *src = s.data.get();
+  src += frame * s.frame_h * s.w;
 
   uint8_t *lit = lightmap.data();
 
@@ -176,7 +177,8 @@ bool load_sprites() {
   fclose(f);
 
   // pistol frame height
-  sprites[2].frame_h = 168;
+  sprites[SPRITE_PISTOL].frame_h = 168;
+  sprites[SPRITE_GORE].frame_h = 32;
 
   return true;
 }

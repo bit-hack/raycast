@@ -1,3 +1,6 @@
 ./data/things/test.bmp
 ./data/sky/sky.bmp
 ./data/weapons/pistol.bmp
+./data/particles/gore.bmp
+./data/particles/decals.bmp
+./data/particles/debug.bmp

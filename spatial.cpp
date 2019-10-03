@@ -179,6 +179,11 @@ void spatial_t::hitscan(float vx, float vy, float rx, float ry, vec3f_t &hit, th
       break;
     }
   }
+
+  // if its a wall hit then keep the player z pos
+  if (!thing) {
+    hit.z = player_pos().z + 2.f;
+  }
 }
 
 void spatial_t::overlaps(std::set<std::pair<thing_t*, thing_t*>> &out) {

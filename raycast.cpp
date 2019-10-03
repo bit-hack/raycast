@@ -13,7 +13,7 @@ static void draw_sky(
   float y0,
   float y1
 ) {
-  const sprite_t &sky = sprites[1];
+  const sprite_t &sky = sprites[SPRITE_SKY];
   if (!sky.data) {
     return;
   }

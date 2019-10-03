@@ -16,6 +16,7 @@
 #include "things.h"
 #include "pfields.h"
 #include "spatial.h"
+#include "particles.h"
 
 service_t service;
 const float near_plane_scale = .66f;
@@ -86,7 +87,7 @@ void do_collisions(void) {
   std::set<std::pair<thing_t*, thing_t*>> pairs;
   service.spatial->overlaps(pairs);
   for (auto &p : pairs) {
-
+    // TODO
   }
 }
 
@@ -105,6 +106,8 @@ void tick(void) {
   do_collisions();
   //
 //  service.spatial->draw();
+
+  service.particles->tick();
 
   // present the screen
   present_screen_sse(surf);
@@ -134,6 +137,7 @@ int main(int argc, char *args[]) {
   service.things = &things;
   service.pfield = new pfield_t(map);
   service.spatial = new spatial_t(map);
+  service.particles = new particle_manager_t;
 
   thing_t *t = service.things->create(IMP);
   t->pos = vec3f_t{33.2f, 34.8f, 16};

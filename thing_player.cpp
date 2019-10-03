@@ -28,7 +28,7 @@ void thing_player_t::do_shoot() {
   if (thing) {
 
     thing->on_damage(pos, hit, .1f);
-
+#if 0
     vec2f_t out;
     project(hit, out);
     for (int y = out.y - 4; y < out.y + 4; ++y) {
@@ -38,6 +38,11 @@ void thing_player_t::do_shoot() {
         }
       }
     }
+#endif
+  }
+  else {
+    // wall decal
+    service.particles->spawn(hit, SPRITE_DECALS, 0, 60);
   }
 
 }
@@ -75,6 +80,21 @@ void thing_player_t::tick() {
 
   do_movement();
   draw_gun();
+
+
+  // debug wall hit
+  {
+    vec3f_t hit;
+    thing_t *thing = nullptr;
+    const vec2f_t &dir = player_dir();
+    service.spatial->hitscan(pos.x, pos.y, dir.x, dir.y, hit, thing);
+    if (!thing) {
+      vec2f_t proj;
+      if (project(hit, proj)) {
+        plot(proj.x, proj.y, 0xffffff);
+      }
+    }
+  }
 }
 
 void thing_player_t::draw_gun() {
@@ -90,7 +110,7 @@ void thing_player_t::draw_gun() {
   const float wx =       sinf(viewBob)  * accMag * 64.f;
   const float wy = fabsf(cosf(viewBob)) * accMag * 64.f;
   const uint8_t light = service.map->getLight(int32_t(pos.x), int32_t(pos.y));
-  draw_sprite(sprites[2], vec2f_t{148 + wx, 90 + wy}, light, frame);
+  draw_sprite(sprites[SPRITE_PISTOL], vec2f_t{148 + wx, 90 + wy}, light, frame);
 }
 
 void thing_player_t::do_movement() {

@@ -3,6 +3,15 @@
 
 #include "common.h"
 
+enum {
+  SPRITE_IMP,
+  SPRITE_SKY,
+  SPRITE_PISTOL,
+  SPRITE_GORE,
+  SPRITE_DECALS,
+  SPRITE_DEBUG,
+};
+
 
 struct sprite_t {
 
