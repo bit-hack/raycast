@@ -84,7 +84,7 @@ void thing_imp_t::tick() {
   move(new_pos);
   // draw sprite
   const uint8_t l = service.map->getLight(int(pos.x), int(pos.y));
-  draw_sprite(sprites[0], pos, height, l, 0);
+  draw_sprite(sprites[0], pos, height, l, 0, 0);
   // draw target
 #if 0
   vec2f_t p;

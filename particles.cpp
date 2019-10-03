@@ -21,7 +21,7 @@ void particle_manager_t::tick() {
     vec3f_t pos = p.pos;
     const float height = s.frame_h / 12;
 //    pos.z -= height / 2;
-    draw_sprite(s, pos, height, 0xff, p.index);
+    draw_sprite(s, pos, height, 0xff, p.index, -32);
 #endif
 
     ++itt;

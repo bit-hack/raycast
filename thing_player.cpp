@@ -26,19 +26,7 @@ void thing_player_t::do_shoot() {
   const vec2f_t &dir = player_dir();
   service.spatial->hitscan(pos.x, pos.y, dir.x, dir.y, hit, thing);
   if (thing) {
-
     thing->on_damage(pos, hit, .1f);
-#if 0
-    vec2f_t out;
-    project(hit, out);
-    for (int y = out.y - 4; y < out.y + 4; ++y) {
-      for (int x = out.x - 4; x < out.x + 4; ++x) {
-        if ((x ^ y) & 1) {
-          plot(x, y, 0xFF00FF);
-        }
-      }
-    }
-#endif
   }
   else {
     // wall decal
@@ -125,7 +113,7 @@ void thing_player_t::do_movement() {
     SDL_WarpMouse(screen_w, screen_h);
 
     const int32_t dx = mx - screen_w;
-    dir += float(dx) * 0.006f;
+    dir += float(dx) * 0.003f;
   }
 #endif
 

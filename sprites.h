@@ -29,7 +29,8 @@ void draw_sprite(
   const vec3f_t &p,     // sprite location
   const float height,   // sprite height
   const uint8_t light,  // brightness
-  const int32_t frame); // animation frame
+  const int32_t frame,  // animation frame
+  const int32_t znudge);
 
 void draw_sprite(
   sprite_t &s,          // sprite

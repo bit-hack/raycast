@@ -100,6 +100,8 @@ void tick(void) {
   service.pfield->update();
   // redraw raycasting
   redraw();
+  // update before things
+  service.particles->tick();
   // update all entities
   service.things->tick();
   // resolve collisions
@@ -107,7 +109,6 @@ void tick(void) {
   //
 //  service.spatial->draw();
 
-  service.particles->tick();
 
   // present the screen
   present_screen_sse(surf);

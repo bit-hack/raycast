@@ -48,7 +48,8 @@ void draw_sprite(
     const vec3f_t &pos,
     const float height,
     const uint8_t light,
-    const int32_t frame) {
+    const int32_t frame,
+    const int32_t znudge) {
 
   vec2f_t p;
   const float dist = project(pos, p);
@@ -58,7 +59,7 @@ void draw_sprite(
   }
 
   // sprite depth
-  const uint16_t d = uint16_t(dist * 256);
+  const uint16_t d = std::max(0, int32_t(dist * 256) + znudge);
 
   const float y2 = p.y;
   const float y1 = project(pos.z + height, dist, y2);

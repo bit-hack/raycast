@@ -138,15 +138,17 @@ void spatial_t::hitscan(float vx, float vy, float rx, float ry, vec3f_t &hit, th
       best = dist;
       thing = t;
       hit = t->pos;
-      hit.z += t->height / 2;
       hit.x -= ry * side_val;
       hit.y += rx * side_val;
+      hit.z += t->height / 2;
     }
 
     // we can early exit now if we got something
     if (thing) {
       break;
     }
+
+    vec3f_t new_hit;
 
     // step ray to next intersection
     if (len.x < len.y) {
@@ -155,9 +157,7 @@ void spatial_t::hitscan(float vx, float vy, float rx, float ry, vec3f_t &hit, th
       cell.x += step.x;
       // step intersection point
       px += vec2f_t { float(step.x), dd.y };
-      if (!thing) {
-        hit = vec3f_t{px.x, px.y, 0.f};
-      }
+      new_hit = vec3f_t{px.x, px.y, 0.f};
       // calculate perp distance
       dist = ((cell.x - vx) + (step.x < 0 ? 1 : 0)) / rx;
 
@@ -167,9 +167,7 @@ void spatial_t::hitscan(float vx, float vy, float rx, float ry, vec3f_t &hit, th
       cell.y += step.y;
       // step intersection point
       py += vec2f_t { dd.x, float(step.y) };
-      if (!thing) {
-        hit = vec3f_t{py.x, py.y, 0.f};
-      }
+      new_hit = vec3f_t{py.x, py.y, 0.f};
       // calculate perp distance
       dist = ((cell.y - vy) + (step.y < 0 ? 1 : 0)) / ry;
     }
@@ -178,6 +176,8 @@ void spatial_t::hitscan(float vx, float vy, float rx, float ry, vec3f_t &hit, th
     if (floor >= 63 || (maxy >= miny)) {
       break;
     }
+
+    hit = new_hit;
   }
 
   // if its a wall hit then keep the player z pos
