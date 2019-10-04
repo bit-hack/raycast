@@ -178,6 +178,7 @@ bool load_sprites() {
   fclose(f);
 
   // pistol frame height
+  sprites[SPRITE_IMP].frame_h = 64;
   sprites[SPRITE_PISTOL].frame_h = 168;
   sprites[SPRITE_GORE].frame_h = 32;
 

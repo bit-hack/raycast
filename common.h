@@ -21,6 +21,7 @@ extern float eye_level;
 
 extern const float near_plane_scale;
 
+const float pi = 3.14159265359f;
 const uint32_t ticks_per_sec = 30;
 
 // screen width and height

@@ -20,7 +20,6 @@ void thing_player_t::on_create() {
 }
 
 void thing_player_t::do_shoot() {
-
   vec3f_t hit;
   thing_t *thing = nullptr;
   const vec2f_t &dir = player_dir();
@@ -32,7 +31,6 @@ void thing_player_t::do_shoot() {
     // wall decal
     service.particles->spawn(hit, SPRITE_DECALS, 0, 60);
   }
-
 }
 
 void thing_player_t::tick() {
@@ -41,7 +39,6 @@ void thing_player_t::tick() {
 
   // update viewbob accumulator
   {
-    const float pi = 3.14159265359f;
     viewBob += 2.f * pi / ticks_per_sec;
     if (viewBob > 2.f * pi) {
       viewBob -= 2.f * pi;
@@ -55,7 +52,7 @@ void thing_player_t::tick() {
   int buttons = SDL_GetMouseState(nullptr, nullptr);
   bool shooting = keys[SDLK_LCTRL] || (buttons & SDL_BUTTON_LMASK);
 #else
-  bool shooting = keys[SDLK_LCTRL];
+  bool shooting = (keys[SDLK_LCTRL] != 0);
 #endif
 
   // kick off a shot
@@ -68,21 +65,6 @@ void thing_player_t::tick() {
 
   do_movement();
   draw_gun();
-
-
-  // debug wall hit
-  {
-    vec3f_t hit;
-    thing_t *thing = nullptr;
-    const vec2f_t &dir = player_dir();
-    service.spatial->hitscan(pos.x, pos.y, dir.x, dir.y, hit, thing);
-    if (!thing) {
-      vec2f_t proj;
-      if (project(hit, proj)) {
-        plot(proj.x, proj.y, 0xffffff);
-      }
-    }
-  }
 }
 
 void thing_player_t::draw_gun() {

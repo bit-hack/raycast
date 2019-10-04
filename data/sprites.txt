@@ -1,4 +1,4 @@
-./data/things/test.bmp
+./data/things/imp.bmp
 ./data/sky/sky.bmp
 ./data/weapons/pistol.bmp
 ./data/particles/gore.bmp

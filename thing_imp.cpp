@@ -82,27 +82,25 @@ void thing_imp_t::tick() {
   new_pos.y += res.y * 0.5f;
   // move to new location
   move(new_pos);
-  // draw sprite
+
+  draw();
+}
+
+void thing_imp_t::draw() {
   const uint8_t l = service.map->getLight(int(pos.x), int(pos.y));
+
+  const vec3f_t &p = player_pos();
+  // direction from player to imp
+  const vec3f_t dir = pos - p;
+  const float angle = atan2f(dir.y, dir.x);
+
+  const float frame = angle * 8.f / pi;
+
+  uint32_t f = int32_t(frame) & 0x7;
+
+  // TODO
+
   draw_sprite(sprites[0], pos, height, l, 0, 0);
-  // draw target
-#if 0
-  vec2f_t p;
-  if (project(vec3f_t{target.x, target.y, pos.z}, p) > 0) {
-    plot(int(p.x), int(p.y), 0xFFFFFF);
-  }
-#endif
-#if 0
-  {
-    vec2f_t min, max;
-    if (screen_aabb(min, max)) {
-      plot(min.x, min.y, 0xFFFFFF);
-      plot(min.x, max.y, 0xFFFFFF);
-      plot(max.x, min.y, 0xFFFFFF);
-      plot(max.x, max.y, 0xFFFFFF);
-    }
-  }
-#endif
 }
 
 thing_t *thing_create_imp() {

@@ -106,5 +106,6 @@ struct thing_imp_t: public thing_t {
     float damage);
 
 protected:
+  void draw();
   void replan();
 };
