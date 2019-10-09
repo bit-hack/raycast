@@ -1,6 +1,7 @@
 #include "map.h"
 #include "things.h"
 #include "pfields.h"
+#include "spatial.h"
 
 static float randf() {
   return 1.f - 2.f * (float(rand()) / float(RAND_MAX));
@@ -15,26 +16,47 @@ void thing_imp_t::on_create() {
   dir = 1.f;
   height = 4.f;
   radius = 0.3f;
+  state = IDLE;
 }
 
 void thing_imp_t::replan() {
 
-  const float px = pos.x + randf() * .95f;
-  const float py = pos.y + randf() * .95f;
+  const int32_t px = int(pos.x);
+  const int32_t py = int(pos.y);
 
-  // get imp height
-  const uint8_t h0 = service.map->getHeight(int(pos.x), int(pos.y));
-  const uint8_t h1 = service.map->getHeight(int(px), int(py));
+  const uint8_t h = service.map->getHeight(px, py);
+  const uint8_t p = service.pfield->get(px, py);
 
-  if (h0 + 1 < h1) {
-    return;
+  const int32_t dx[] = { -1, 1,  0, 0 };
+  const int32_t dy[] = {  0, 0, -1, 1 };
+
+  int32_t tx = 0;
+  int32_t ty = 0;
+
+  uint8_t best_np = 0;
+
+  for (int i = 0; i < 4; ++i) {
+    const uint8_t nh = service.map->getHeight(px+dx[i], py+dy[i]);
+    const uint8_t np = service.pfield->get(px+dx[i], py+dy[i]);
+    // lets pick the best one
+    if (np < best_np) {
+      continue;
+    }
+    // if its less good square
+    if (np < p) {
+      continue;
+    }
+    // if inpassable
+    if (nh > h + 1) {
+      continue;
+    }
+    tx = dx[i];
+    ty = dy[i];
   }
 
-  const uint8_t n = service.pfield->get(int(px), int(py));
-
-  if (n >= service.pfield->get(int(target.x), int(target.y))) {
-    target.x = px;
-    target.y = py;
+  if (tx != 0 || ty != 0) {
+    target.x = px + tx + .5f + .25f * (randf() - .5f);
+    target.y = py + ty + .5f + .25f * (randf() - .5f);
   }
 }
 
@@ -43,23 +65,98 @@ void thing_imp_t::on_damage(
   const vec3f_t &hit,
   float damage) {
 
+  state = HURT;
+  _timer = 0;
+
   const vec3f_t d = normal(src - pos);
   acc = acc - d * damage;
 
   service.particles->spawn(hit, SPRITE_GORE, rand(), 9);
 }
 
+void thing_imp_t::tick_idle() {
+  const int32_t px = int(pos.x);
+  const int32_t py = int(pos.y);
+  const uint8_t p = service.pfield->get(px, py);
+  if (p > 0x68) {
+    state = WALKING;
+    _timer = 0;
+    target = vec2f_t{pos.x, pos.y};
+  }
+}
+
+void thing_imp_t::tick_walking() {
+
+  ++_timer;
+  if (_timer > 100) {
+    replan();
+    _timer = 0;
+  }
+
+  const float dx = target.x - pos.x;
+  const float dy = target.y - pos.y;
+  dir = atan2f(dy, dx);
+
+  const float d = dx*dx + dy*dy;
+  if (d < .2f) {
+
+    const vec3f_t pp = player_pos();
+
+    if (service.spatial->LOS(pos + vec3f_t{0.f, 0.f, 3.f}, pp + vec3f_t{0.f, 0.f, 3.f})) {
+      state = SHOOTING;
+      _timer = 0;
+    }
+
+    replan();
+    _timer = 0;
+  }
+  else {
+    acc.x += move_to(dx, 0.003f, 0.01f);
+    acc.y += move_to(dy, 0.003f, 0.01f);
+  }
+}
+
+void thing_imp_t::tick_shooting() {
+  ++_timer;
+  if (_timer == 10) {
+    // so some shooting!
+  }
+  if (_timer > 30) {
+    target = vec2f_t{ pos.x, pos.y };
+    state = WALKING;
+    _timer = 0;
+  }
+}
+
+void thing_imp_t::tick_hurt() {
+  ++_timer;
+  if (_timer > 15) {
+    target = vec2f_t{ pos.x, pos.y };
+    state = WALKING;
+    _timer = 0;
+  }
+}
+
+void thing_imp_t::tick_dead() {
+}
+
+void thing_imp_t::tick_falling() {
+  const uint8_t h = service.map->getHeight(int(pos.x), int(pos.y));
+  if (pos.z <= h) {
+    state = WALKING;
+  }
+}
+
 void thing_imp_t::tick() {
 
-  {
-    replan();
-    const float dx = target.x - pos.x;
-    const float dy = target.y - pos.y;
-    const float d = dx*dx + dy*dy;
-    if (d > .1f) {
-      acc.x += move_to(dx, 0.003f, 0.01f);
-      acc.y += move_to(dy, 0.003f, 0.01f);
-    }
+  switch (state) {
+  default:
+  case IDLE:     tick_idle();     break;
+  case WALKING:  tick_walking();  break;
+  case SHOOTING: tick_shooting(); break;
+  case HURT:     tick_hurt();     break;
+  case DEAD:     tick_dead();     break;
+  case FALLING:  tick_falling();  break;
   }
 
   vec3f_t new_pos = pos + acc;
@@ -71,6 +168,8 @@ void thing_imp_t::tick() {
   }
   else {
     acc.z -= gravity;
+    state = FALLING;
+    _timer = 0;
   }
 
   // movement damping
@@ -91,16 +190,14 @@ void thing_imp_t::draw() {
 
   const vec3f_t &p = player_pos();
   // direction from player to imp
-  const vec3f_t dir = pos - p;
-  const float angle = atan2f(dir.y, dir.x);
+  const vec3f_t d = pos - p;
+  const float angle = atan2f(d.y, d.x);
 
-  const float frame = angle * 8.f / pi;
+  const float frame = 4.5f + (((angle - dir) / (pi * 2)) * 8.f);
 
   uint32_t f = int32_t(frame) & 0x7;
 
-  // TODO
-
-  draw_sprite(sprites[0], pos, height, l, 0, 0);
+  draw_sprite(sprites[0], pos, height, l, f, 0);
 }
 
 thing_t *thing_create_imp() {

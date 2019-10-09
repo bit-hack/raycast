@@ -88,6 +88,17 @@ protected:
 
 struct thing_imp_t: public thing_t {
 
+  enum {
+    IDLE,
+    WALKING,
+    SHOOTING,
+    HURT,
+    DEAD,
+    FALLING,
+  };
+
+  int state;
+
   vec2f_t target;
 
   thing_imp_t()
@@ -106,6 +117,16 @@ struct thing_imp_t: public thing_t {
     float damage);
 
 protected:
+
+  int _timer;
+
+  void tick_idle();
+  void tick_walking();
+  void tick_shooting();
+  void tick_hurt();
+  void tick_dead();
+  void tick_falling();
+
   void draw();
   void replan();
 };

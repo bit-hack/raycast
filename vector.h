@@ -1,4 +1,5 @@
 #pragma once
+#include <math.h>
 
 template <typename type_t>
 struct vec2_t {

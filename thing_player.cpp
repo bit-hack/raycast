@@ -29,7 +29,7 @@ void thing_player_t::do_shoot() {
   }
   else {
     // wall decal
-    service.particles->spawn(hit, SPRITE_DECALS, 0, 60);
+    service.particles->spawn(hit, SPRITE_DECALS, 0, 5);
   }
 }
 

@@ -11,7 +11,8 @@ struct spatial_t {
 
   spatial_t(map_t &m) : map(m) {}
 
-  void hitscan(float px, float py, float dx, float dy, vec3f_t &hit, thing_t *&t);
+  void hitscan(float px, float py, float dx, float dy, vec3f_t &hit, thing_t *&t) const;
+  bool LOS(const vec3f_t &a, const vec3f_t &b) const;
 
   void insert(thing_t *t);
   void remove(thing_t *t);

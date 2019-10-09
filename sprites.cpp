@@ -147,6 +147,7 @@ void draw_sprite(
       if ((rgb & 0xff000000) == 0) {
         dst[x] = rgb;
         dth[x] = 0;
+        lit[x] = light;
       }
       ++srcx;
     }
